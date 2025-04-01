@@ -45,6 +45,56 @@
             background-color: #F59E0B;
             color: white;
         }
+        /* Add to your style section in HTML */
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+    }
+    
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+    }
+    
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+    }
+}
+
+.pulse-animation {
+    animation: pulse 2s infinite;
+}
+
+.truck-icon {
+    animation: truck-movement 1s infinite alternate;
+}
+
+@keyframes truck-movement {
+    from { transform: translateY(0px); }
+    to { transform: translateY(-3px); }
+}
+
+.animate-pulse {
+    animation: pulse-opacity 2s infinite;
+}
+
+@keyframes pulse-opacity {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.route-highlight {
+    stroke-dasharray: 10;
+    animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: 20;
+    }
+}
     </style>
 </head>
 <body class="min-h-screen bg-gray-50">

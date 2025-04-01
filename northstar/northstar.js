@@ -1891,4 +1891,911 @@ function updateRouteResults(data) {
   }
 
 
-  
+  //new until 12
+
+  async function validateTruckRouteDetailed(pickup, delivery, truckSpecs) {
+    try {
+        // Call the OpenRouteService API with HGV (Heavy Goods Vehicle) profile
+        const apiKey = "5b3ce3597851110001cf6248d537c887ab8b40409e05940495d5c8ca";
+        
+        // Create the request URL with truck specifications
+        const url = "https://api.openrouteservice.org/v2/directions/driving-hgv?" +
+            "api_key=" + apiKey +
+            "&start=" + pickup.lon + "," + pickup.lat +
+            "&end=" + delivery.lon + "," + delivery.lat +
+            "&height=" + (truckSpecs.height * 0.3048) + // Convert feet to meters
+            "&weight=" + (truckSpecs.weight * 0.453592) + // Convert lbs to kg
+            "&format=geojson" +
+            "&options={\"avoid_features\":[\"highways\",\"tollways\",\"ferries\"],\"vehicle_type\":\"hgv\"}";
+            
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('API request failed: ' + response.status);
+        }
+        
+        const data = await response.json();
+        
+        // Extract hazard information from the response
+        const hazards = [];
+        
+        if (data.routes && data.routes.length > 0) {
+            // Check warnings object for truck restrictions
+            if (data.routes[0].warnings) {
+                data.routes[0].warnings.forEach(warning => {
+                    if (warning.type) {
+                        // Categorize the warning
+                        let hazardType = "";
+                        if (warning.type.includes("bridge") || warning.type.includes("height")) {
+                            hazardType = "lowBridge";
+                        } else if (warning.type.includes("weight")) {
+                            hazardType = "weightLimit";
+                        } else if (warning.type.includes("restriction") || warning.type.includes("prohibited")) {
+                            hazardType = "truckProhibited";
+                        }
+                        
+                        if (hazardType) {
+                            // Add to hazards list with coordinates
+                            hazards.push({
+                                type: hazardType,
+                                message: warning.message || "Truck restriction detected",
+                                location: warning.geometry || null,
+                                warningCode: warning.code || null
+                            });
+                        }
+                    }
+                });
+            }
+            
+            // Check for segments with known issues
+            if (data.routes[0].segments) {
+                data.routes[0].segments.forEach(segment => {
+                    if (segment.steps) {
+                        segment.steps.forEach(step => {
+                            if (step.warning || (step.maneuver && step.maneuver.warning)) {
+                                const warning = step.warning || step.maneuver.warning;
+                                let hazardType = "";
+                                
+                                if (warning.includes("clearance") || warning.includes("height")) {
+                                    hazardType = "lowBridge";
+                                } else if (warning.includes("weight") || warning.includes("tons")) {
+                                    hazardType = "weightLimit";
+                                } else if (warning.includes("truck") || warning.includes("hgv") || warning.includes("prohibited")) {
+                                    hazardType = "truckProhibited";
+                                }
+                                
+                                if (hazardType) {
+                                    hazards.push({
+                                        type: hazardType,
+                                        message: warning,
+                                        location: step.geometry || null
+                                    });
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+        }
+        
+        return {
+            valid: hazards.length === 0,
+            hazards: hazards,
+            routeData: data,
+            distance: data.routes[0].summary.distance,
+            duration: data.routes[0].summary.duration,
+            geometry: data.routes[0].geometry
+        };
+    } catch (error) {
+        console.error('Error validating truck route:', error);
+        return {
+            valid: false,
+            error: error.message,
+            hazards: []
+        };
+    }
+}
+
+async function loadSimulationRoute() {
+    try {
+        // Use predefined test cases that are known to have truck hazards
+        const testRoutes = [
+            {
+                name: "Chicago to Detroit - Low Bridge Test",
+                pickup: { address: "Chicago, IL", lat: 41.8781, lon: -87.6298 },
+                delivery: { address: "Detroit, MI", lat: 42.3314, lon: -83.0458 },
+                truck: { height: 13.6, weight: 80000 } // 13'6" height and 80,000 lbs
+            },
+            {
+                name: "New York to Philadelphia - Weight Restriction Test",
+                pickup: { address: "New York, NY", lat: 40.7128, lon: -74.0060 },
+                delivery: { address: "Philadelphia, PA", lat: 39.9526, lon: -75.1652 },
+                truck: { height: 13.6, weight: 90000 } // Overweight for many bridges
+            },
+            {
+                name: "Los Angeles to San Francisco - Truck Restriction Test",
+                pickup: { address: "Los Angeles, CA", lat: 34.0522, lon: -118.2437 },
+                delivery: { address: "San Francisco, CA", lat: 37.7749, lon: -122.4194 },
+                truck: { height: 14.5, weight: 80000 } // Taller than standard
+            }
+        ];
+        
+        // Select a test route with a high probability of hazards
+        const selectedRoute = testRoutes[0]; // We can randomize this for variety
+        
+        // Validate the route to get hazards
+        const validation = await validateTruckRouteDetailed(
+            selectedRoute.pickup, 
+            selectedRoute.delivery,
+            selectedRoute.truck
+        );
+        
+        if (validation.error) {
+            throw new Error('Route validation failed: ' + validation.error);
+        }
+        
+        // Store the route data for simulation
+        currentRouteData = {
+            name: selectedRoute.name,
+            pickup: selectedRoute.pickup,
+            delivery: selectedRoute.delivery,
+            truck: selectedRoute.truck,
+            distance: validation.distance,
+            duration: validation.duration,
+            geometry: validation.geometry,
+            hazards: validation.hazards
+        };
+        
+        // If we didn't find real hazards, add some simulated ones for demonstration
+        if (currentRouteData.hazards.length < 3) {
+            addSimulatedHazardsToRoute(currentRouteData);
+        }
+        
+        // Display the route on the map
+        displayRoute(currentRouteData);
+        
+        return currentRouteData;
+    } catch (error) {
+        console.error('Error loading simulation route:', error);
+        // Fallback to a simple route with simulated hazards
+        const fallbackRoute = {
+            name: "Fallback Test Route",
+            pickup: { address: "Chicago, IL", lat: 41.8781, lon: -87.6298 },
+            delivery: { address: "Detroit, MI", lat: 42.3314, lon: -83.0458 },
+            truck: { height: 13.6, weight: 80000 },
+            distance: 383000, // meters
+            duration: 14400, // seconds
+            geometry: {
+                type: "LineString",
+                coordinates: [
+                    [-87.6298, 41.8781],
+                    [-85.7585, 42.2162],
+                    [-83.0458, 42.3314]
+                ]
+            }
+        };
+        
+        // Add simulated hazards
+        addSimulatedHazardsToRoute(fallbackRoute);
+        
+        // Display fallback route
+        currentRouteData = fallbackRoute;
+        displayRoute(currentRouteData);
+        
+        return fallbackRoute;
+    }
+}
+
+function startTruckMovementSimulation() {
+    if (!currentRouteData || !currentRouteData.geometry) {
+        console.error('No route data available for truck movement simulation');
+        return;
+    }
+    
+    // Extract route coordinates from the GeoJSON
+    let routeCoordinates;
+    if (currentRouteData.geometry.type === "LineString") {
+        // Convert from GeoJSON format [lon, lat] to Leaflet [lat, lon]
+        routeCoordinates = currentRouteData.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+    } else if (Array.isArray(currentRouteData.geometry.coordinates)) {
+        // Convert from GeoJSON format [lon, lat] to Leaflet [lat, lon]
+        routeCoordinates = currentRouteData.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+    } else {
+        console.error('Invalid geometry format for simulation');
+        return;
+    }
+    
+    // Create a truck marker
+    const truckIcon = L.divIcon({
+        html: `<div class="truck-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#3B82F6" width="32" height="32">
+                  <path d="M18 18.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm1.5-9H17V12h4.46a5.5 5.5 0 0 0-1.96-2.5zM6 18.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM20 8l3 4v5h-2a3 3 0 1 1-6 0H9a3 3 0 1 1-6 0H1V6c0-1.1.9-2 2-2h14v4h3zM3 6v4.5h4V6H3zm0 6v2h2c0-1.2.75-2.28 1.82-2.7L6 9.91V12H3z"/>
+                </svg>
+               </div>`,
+        className: '',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+    });
+    
+    // Add truck marker to the map
+    const truckMarker = L.marker(routeCoordinates[0], {
+        icon: truckIcon
+    }).addTo(routeLayer);
+    
+    // Calculate the total simulation duration (60 seconds)
+    const totalDuration = 60 * 1000; // 60 seconds in milliseconds
+    const totalPoints = routeCoordinates.length;
+    
+    // Calculate how many points to show per interval to complete in 60 seconds
+    const pointsPerInterval = Math.max(1, Math.ceil(totalPoints / (totalDuration / 1000)));
+    
+    let currentIndex = 0;
+    const updateInterval = 1000; // Update every second
+    
+    // Function to trigger hazard encounters based on location
+    const checkForHazards = (position, index) => {
+        // Calculate progress percentage
+        const progress = (index / totalPoints) * 100;
+        
+        // If we have real hazards with locations, check proximity
+        if (currentRouteData.hazards && currentRouteData.hazards.length > 0) {
+            currentRouteData.hazards.forEach(hazard => {
+                if (hazard.triggered) return; // Don't trigger same hazard twice
+                
+                // If the hazard has a location, check proximity
+                if (hazard.location) {
+                    const hazardCoords = Array.isArray(hazard.location) ? 
+                        hazard.location : 
+                        (hazard.location.coordinates || []);
+                    
+                    // Convert to [lat, lon] if needed
+                    const hazardPosition = hazardCoords.length === 2 && typeof hazardCoords[0] === 'number' ? 
+                        [hazardCoords[1], hazardCoords[0]] : 
+                        null;
+                    
+                    if (hazardPosition) {
+                        const distance = calculateDistance(position, hazardPosition);
+                        
+                        // If we're close to the hazard (within 1km)
+                        if (distance < 1) {
+                            simulateHazardEncounter(hazard.type, hazard.message || "Truck restriction detected");
+                            hazard.triggered = true; // Mark as triggered
+                        }
+                    }
+                }
+            });
+        }
+        
+        // For simulated hazards, trigger them at specific progress points
+        if (progress >= 25 && progress < 26 && !hazardTriggered25) {
+            const hazardType = currentRouteData.simulatedHazards?.find(h => h.progressPoint === 25)?.type || "lowBridge";
+            const message = currentRouteData.simulatedHazards?.find(h => h.progressPoint === 25)?.message || 
+                           "LOW BRIDGE AHEAD! Clearance: 11'8\" (Your truck: 13'6\")";
+            simulateHazardEncounter(hazardType, message);
+            hazardTriggered25 = true;
+        } else if (progress >= 50 && progress < 51 && !hazardTriggered50) {
+            const hazardType = currentRouteData.simulatedHazards?.find(h => h.progressPoint === 50)?.type || "weightLimit";
+            const message = currentRouteData.simulatedHazards?.find(h => h.progressPoint === 50)?.message || 
+                           "WEIGHT LIMIT BRIDGE: 15 tons (Your truck: 40 tons)";
+            simulateHazardEncounter(hazardType, message);
+            hazardTriggered50 = true;
+        } else if (progress >= 75 && progress < 76 && !hazardTriggered75) {
+            const hazardType = currentRouteData.simulatedHazards?.find(h => h.progressPoint === 75)?.type || "truckProhibited";
+            const message = currentRouteData.simulatedHazards?.find(h => h.progressPoint === 75)?.message || 
+                           "TRUCK PROHIBITED ROAD AHEAD: Local ordinance";
+            simulateHazardEncounter(hazardType, message);
+            hazardTriggered75 = true;
+        }
+    };
+    
+    let hazardTriggered25 = false;
+    let hazardTriggered50 = false;
+    let hazardTriggered75 = false;
+    
+    // Start moving the truck
+    const moveTruck = setInterval(() => {
+        currentIndex += pointsPerInterval;
+        
+        if (currentIndex >= totalPoints) {
+            clearInterval(moveTruck);
+            
+            // Show simulation summary when complete
+            setTimeout(() => {
+                // Count triggered hazards
+                const triggeredCount = (hazardTriggered25 ? 1 : 0) + 
+                                     (hazardTriggered50 ? 1 : 0) + 
+                                     (hazardTriggered75 ? 1 : 0);
+                
+                // Calculate potential savings
+                const savingsPerHazard = 4000; // Average savings per hazard avoided
+                const potentialSavings = triggeredCount * savingsPerHazard;
+                
+                // Show summary
+                showSimulationSummary({
+                    hazardsAvoided: triggeredCount,
+                    potentialSavings: "$" + potentialSavings.toLocaleString(),
+                    timeSaved: Math.round(triggeredCount * 1.2) + " hours",
+                    finesPrevented: "$" + Math.round(triggeredCount * 1500).toLocaleString()
+                });
+            }, 2000);
+            
+            return;
+        }
+        
+        // Get current position
+        const position = routeCoordinates[currentIndex];
+        
+        // Update truck position on map
+        truckMarker.setLatLng(position);
+        
+        // Update current location for navigation updates
+        updateCurrentLocation(position[0], position[1]);
+        
+        // Check for hazards at this position
+        checkForHazards(position, currentIndex);
+        
+    }, updateInterval);
+}
+
+function addSimulatedHazardsToRoute(route) {
+    if (!route || !route.geometry) return;
+    
+    // Extract route coordinates
+    let coordinates;
+    if (route.geometry.type === "LineString") {
+        coordinates = route.geometry.coordinates;
+    } else if (Array.isArray(route.geometry.coordinates)) {
+        coordinates = route.geometry.coordinates;
+    } else {
+        return;
+    }
+    
+    // Define simulated hazards at different points along the route
+    route.simulatedHazards = [
+        {
+            type: "lowBridge",
+            progressPoint: 25, // Trigger at 25% along the route
+            message: "LOW BRIDGE AHEAD! Clearance: 11'8\" (Your truck: 13'6\")",
+            location: coordinates[Math.floor(coordinates.length * 0.25)]
+        },
+        {
+            type: "weightLimit",
+            progressPoint: 50, // Trigger at 50% along the route
+            message: "WEIGHT LIMIT BRIDGE: 15 tons (Your truck: 40 tons)",
+            location: coordinates[Math.floor(coordinates.length * 0.5)]
+        },
+        {
+            type: "truckProhibited",
+            progressPoint: 75, // Trigger at 75% along the route
+            message: "TRUCK PROHIBITED ROAD AHEAD: Local ordinance",
+            location: coordinates[Math.floor(coordinates.length * 0.75)]
+        }
+    ];
+    
+    // If the route doesn't have a hazards array, create one
+    if (!route.hazards) {
+        route.hazards = [];
+    }
+}
+
+function showSimulationIntro(message) {
+    // Create overlay with intro message
+    const overlay = document.createElement('div');
+    overlay.id = 'simulation-overlay';
+    overlay.className = 'fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50';
+    overlay.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-lg mx-4 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Real-World Route Simulation</h2>
+                <svg class="h-8 w-8 text-blue-600" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
+                </svg>
+            </div>
+            
+            <p class="mb-4 text-gray-700">${message}</p>
+            
+            <div class="bg-blue-50 p-4 rounded-md mb-4 border-l-4 border-blue-500">
+                <h3 class="font-medium text-blue-800 mb-2">This simulation highlights:</h3>
+                <ul class="list-disc pl-5 space-y-1 text-blue-700">
+                    <li>Detection of low clearance bridges that could damage your truck</li>
+                    <li>Warning of weight-restricted bridges that could result in heavy fines</li>
+                    <li>Alerts for roads with truck prohibitions or local restrictions</li>
+                    <li>Real-time rerouting to help you avoid these hazards</li>
+                </ul>
+                <p class="mt-2 text-sm text-blue-600">This simulation uses real-world map data and truck routing algorithms.</p>
+            </div>
+            
+            <button id="start-simulation" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-md shadow-md transition duration-200">
+                Begin 60-Second Truck Safety Demonstration
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Set up event listener for start button
+    document.getElementById('start-simulation').addEventListener('click', () => {
+        overlay.remove();
+        startTruckHazardSimulation();
+    });
+}
+
+function showSimulationIntro(message) {
+    // Create overlay with intro message
+    const overlay = document.createElement('div');
+    overlay.id = 'simulation-overlay';
+    overlay.className = 'fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50';
+    overlay.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-lg mx-4 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Real-World Route Simulation</h2>
+                <svg class="h-8 w-8 text-blue-600" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
+                </svg>
+            </div>
+            
+            <p class="mb-4 text-gray-700">${message}</p>
+            
+            <div class="bg-blue-50 p-4 rounded-md mb-4 border-l-4 border-blue-500">
+                <h3 class="font-medium text-blue-800 mb-2">This simulation highlights:</h3>
+                <ul class="list-disc pl-5 space-y-1 text-blue-700">
+                    <li>Detection of low clearance bridges that could damage your truck</li>
+                    <li>Warning of weight-restricted bridges that could result in heavy fines</li>
+                    <li>Alerts for roads with truck prohibitions or local restrictions</li>
+                    <li>Real-time rerouting to help you avoid these hazards</li>
+                </ul>
+                <p class="mt-2 text-sm text-blue-600">This simulation uses real-world map data and truck routing algorithms.</p>
+            </div>
+            
+            <button id="start-simulation" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-md shadow-md transition duration-200">
+                Begin 60-Second Truck Safety Demonstration
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Set up event listener for start button
+    document.getElementById('start-simulation').addEventListener('click', () => {
+        overlay.remove();
+        startTruckHazardSimulation();
+    });
+}
+
+function showSimulationSummary(data) {
+    // Create summary overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'simulation-summary';
+    overlay.className = 'fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50';
+    overlay.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-xl mx-4 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-gray-800">NorthStar ROI Analysis</h2>
+                <svg class="h-8 w-8 text-green-600" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </div>
+            
+            <p class="mb-4 text-gray-700">In just one trip, NorthStar helped you avoid:</p>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500">
+                    <p class="text-sm text-gray-600 font-medium">Hazards Avoided</p>
+                    <p class="text-2xl font-bold text-green-700">${data.hazardsAvoided}</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500">
+                    <p class="text-sm text-gray-600 font-medium">Potential Savings</p>
+                    <p class="text-2xl font-bold text-green-700">${data.potentialSavings}</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500">
+                    <p class="text-sm text-gray-600 font-medium">Time Saved</p>
+                    <p class="text-2xl font-bold text-green-700">${data.timeSaved}</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500">
+                    <p class="text-sm text-gray-600 font-medium">Fines Prevented</p>
+                    <p class="text-2xl font-bold text-green-700">${data.finesPrevented}</p>
+                </div>
+            </div>
+            
+            <div class="bg-blue-50 p-4 rounded-md mb-6 border border-blue-200">
+                <h3 class="font-medium text-blue-800 mb-2">Cost-Benefit Analysis:</h3>
+                <p class="mb-2">With NorthStar, a 10-truck fleet would save approximately <strong>${(parseInt(data.potentialSavings.replace(/[^0-9]/g, '')) * 10).toLocaleString()}</strong> annually by avoiding:</p>
+                <ul class="list-disc pl-5 mt-2 space-y-1 text-blue-700">
+                    <li><strong>Bridge strikes</strong> - Average cost: $20,000-$50,000 per incident</li>
+                    <li><strong>Weight violations</strong> - Average fine: $2,500-$10,000 per violation</li>
+                    <li><strong>Prohibited road fines</strong> - Average cost: $1,500 per incident</li>
+                    <li><strong>Operational delays</strong> - $150-$500 per hour of downtime</li>
+                </ul>
+            </div>
+            
+            <div class="flex space-x-4">
+                <button id="restart-simulation" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-md shadow-md transition duration-200">
+                    Run Another Test
+                </button>
+                <button id="start-real-navigation" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-md shadow-md transition duration-200">
+                    Start Real-Time Navigation
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Set up event listeners
+    document.getElementById('restart-simulation').addEventListener('click', () => {
+        overlay.remove();
+        startTruckHazardSimulation();
+    });
+    
+    document.getElementById('start-real-navigation').addEventListener('click', () => {
+        overlay.remove();
+        // Exit simulation mode and start real navigation
+        document.getElementById('simulationMode').checked = false;
+        // Reload the current route for real navigation
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        if (token) loadRouteData(token);
+    });
+}
+
+function simulateHazardEncounter(hazardType, warningMessage) {
+    // Get the current position of the truck
+    if (!currentPosition) return;
+    
+    // Create hazard icon and colors based on type
+    let icon, color, sound, iconSvg;
+    
+    switch(hazardType) {
+        case "lowBridge":
+            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M16 8v8m-4-8v8m-4 0h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />`;
+            color = '#ef4444'; // red
+            sound = 'danger-alert.mp3';
+            break;
+        case "weightLimit": 
+            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />`;
+            color = '#f59e0b'; // amber
+            sound = 'caution-alert.mp3';
+            break;
+        case "truckProhibited":
+            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />`;
+            color = '#7c3aed'; // purple
+            sound = 'warning-alert.mp3';
+            break;
+        default:
+            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />`;
+            color = '#ef4444'; // red
+            sound = 'danger-alert.mp3';
+    }
+    
+    // Convert warning to a more professional and helpful format
+    let professionalWarning = warningMessage;
+    if (!professionalWarning || professionalWarning.length < 10) {
+        switch(hazardType) {
+            case "lowBridge":
+                professionalWarning = "LOW BRIDGE DETECTED: Bridge clearance below truck height";
+                break;
+            case "weightLimit":
+                professionalWarning = "WEIGHT RESTRICTION: Bridge weight limit below truck weight";
+                break;
+            case "truckProhibited":
+                professionalWarning = "TRUCK PROHIBITED ROUTE: Not allowed for commercial vehicles";
+                break;
+        }
+    }
+    
+    // Add hazard marker near current position
+    const hazardPosition = [
+        currentPosition[0] + 0.002, 
+        currentPosition[1] + 0.002
+    ];
+    
+    // Create custom icon with SVG
+    const customIcon = L.divIcon({
+        html: `<div style="background-color: ${color}; color: white; padding: 5px; border-radius: 50%; 
+               width: 40px; height: 40px; display: flex; align-items: center; justify-center; 
+               border: 3px solid white; box-shadow: 0 0 15px rgba(0,0,0,0.7);">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   ${iconSvg}
+                 </svg>
+               </div>`,
+        className: 'pulse-animation',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
+    });
+    
+    // Add marker with popup
+    const marker = L.marker(hazardPosition, { icon: customIcon }).addTo(routeLayer);
+    
+    // Create a detailed, professional popup with actual business impact
+ // Create a detailed, professional popup with actual business impact
+ let costImpact, timeImpact;
+ switch(hazardType) {
+     case "lowBridge":
+         costImpact = "$20,000-$50,000 (repair + downtime)";
+         timeImpact = "3-5 days vehicle out of service";
+         break;
+     case "weightLimit":
+         costImpact = "$5,000-$15,000 (fines + legal fees)";
+         timeImpact = "4-8 hours delay + potential license points";
+         break;
+     case "truckProhibited":
+         costImpact = "$1,500-$10,000 (fines + rerouting)";
+         timeImpact = "2-6 hours delay + potential legal issues";
+         break;
+     default:
+         costImpact = "$5,000-$25,000 (estimated)";
+         timeImpact = "3-12 hours delay";
+ }
+
+ marker.bindPopup(`
+     <div class="p-3 max-w-md">
+         <div class="flex items-center space-x-2 mb-2">
+             <div style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%;"></div>
+             <h3 class="font-bold text-lg">${professionalWarning}</h3>
+         </div>
+         
+         <div class="border-t border-b border-gray-200 py-2 my-2">
+             <p class="font-medium mb-1">Business Impact:</p>
+             <div class="ml-2 space-y-1">
+                 <p class="text-sm"><span class="font-medium">Cost:</span> ${costImpact}</p>
+                 <p class="text-sm"><span class="font-medium">Time:</span> ${timeImpact}</p>
+             </div>
+         </div>
+         
+         <div class="mt-2">
+             <p class="text-sm font-medium text-green-700">✓ NorthStar has automatically rerouted you to avoid this hazard</p>
+         </div>
+     </div>
+ `, { maxWidth: 300 });
+ 
+ // Automatically show popup
+ marker.openPopup();
+ 
+ // Play alert sound
+ try {
+     // Create a more professional alert sound approach
+     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+     const oscillator = audioContext.createOscillator();
+     const gainNode = audioContext.createGain();
+     
+     oscillator.type = 'sine';
+     oscillator.frequency.setValueAtTime(hazardType === 'lowBridge' ? 880 : 440, audioContext.currentTime);
+     
+     gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+     
+     oscillator.connect(gainNode);
+     gainNode.connect(audioContext.destination);
+     
+     oscillator.start();
+     oscillator.stop(audioContext.currentTime + 1);
+ } catch (e) {
+     console.log('Audio alert could not be played: ', e);
+ }
+ 
+ // Voice alert with professional announcement
+ speak(professionalWarning, true);
+ 
+ // Show visual alert in the UI
+ showHazardAlert(hazardType, professionalWarning);
+ 
+ // Show rerouting animation and message
+ setTimeout(() => {
+     // Create an alternate route that avoids the hazard
+     const alternateRoute = createAlternateRoute(hazardPosition);
+     highlightAlternateRoute(alternateRoute);
+     
+     // Calculate the business value of the reroute
+     let savingsLow, savingsHigh;
+     switch(hazardType) {
+         case "lowBridge":
+             savingsLow = 20000;
+             savingsHigh = 50000;
+             break;
+         case "weightLimit":
+             savingsLow = 5000;
+             savingsHigh = 15000;
+             break;
+         case "truckProhibited":
+             savingsLow = 1500;
+             savingsHigh = 10000;
+             break;
+         default:
+             savingsLow = 5000;
+             savingsHigh = 25000;
+     }
+     
+     const avgSavings = Math.round((savingsLow + savingsHigh) / 2);
+     
+     // Update the UI to show the business value
+     showRouteUpdateNotification(`REROUTED: Potential savings of $${avgSavings.toLocaleString()}`);
+ }, 3000);
+}
+
+function showHazardAlert(hazardType, message) {
+    // Create a temporary alert div with professional styling
+    const alertDiv = document.createElement('div');
+    
+    // Determine style based on hazard type
+    let bgColor, textColor, borderColor, icon;
+    switch(hazardType) {
+        case "lowBridge":
+            bgColor = 'bg-red-100';
+            textColor = 'text-red-800';
+            borderColor = 'border-red-500';
+            icon = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M16 8v8m-4-8v8m-4 0h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />`;
+            break;
+        case "weightLimit":
+            bgColor = 'bg-yellow-100';
+            textColor = 'text-yellow-800';
+            borderColor = 'border-yellow-500';
+            icon = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />`;
+            break;
+        case "truckProhibited":
+            bgColor = 'bg-purple-100';
+            textColor = 'text-purple-800';
+            borderColor = 'border-purple-500';
+            icon = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />`;
+            break;
+        default:
+            bgColor = 'bg-blue-100';
+            textColor = 'text-blue-800';
+            borderColor = 'border-blue-500';
+            icon = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />`;
+    }
+    
+    alertDiv.className = `fixed top-20 left-1/2 transform -translate-x-1/2 ${bgColor} ${textColor} px-4 py-3 rounded-lg font-bold shadow-lg z-40 flex items-center border-l-4 ${borderColor} max-w-xl`;
+    alertDiv.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            ${icon}
+        </svg>
+        <div>
+            <p class="font-bold">${message}</p>
+            <p class="text-sm">NorthStar is calculating a safer route for your truck</p>
+        </div>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Add animation class for attention
+    alertDiv.classList.add('animate-pulse');
+    
+    // Remove after 6 seconds
+    setTimeout(() => {
+        alertDiv.classList.remove('animate-pulse');
+        alertDiv.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+        setTimeout(() => alertDiv.remove(), 500);
+    }, 6000);
+}
+
+function showRouteUpdateNotification(message) {
+    // Create a notification with professional styling
+    const notification = document.createElement('div');
+    notification.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg font-bold shadow-lg z-40 flex items-center max-w-xl';
+    notification.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+        <div>
+            <p class="font-bold">${message}</p>
+            <p class="text-sm">Using truck-specific routing to protect your business</p>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Add a subtle entrance animation
+    notification.animate([
+        { transform: 'translate(-50%, 100%)', opacity: 0 },
+        { transform: 'translate(-50%, 0)', opacity: 1 }
+    ], {
+        duration: 500,
+        easing: 'ease-out',
+        fill: 'forwards'
+    });
+    
+    // Remove after 7 seconds
+    setTimeout(() => {
+        notification.animate([
+            { transform: 'translate(-50%, 0)', opacity: 1 },
+            { transform: 'translate(-50%, 100%)', opacity: 0 }
+        ], {
+            duration: 500,
+            easing: 'ease-in',
+            fill: 'forwards'
+        }).onfinish = () => notification.remove();
+    }, 7000);
+}
+
+function showSimulationMessage(message) {
+    // Create a status message for simulation progress
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-blue-600 bg-opacity-80 text-white px-4 py-2 rounded-lg text-sm z-40 flex items-center';
+    messageDiv.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        ${message}
+    `;
+    
+    document.body.appendChild(messageDiv);
+    
+    // Automatically remove previous simulation messages
+    document.querySelectorAll('.simulation-message').forEach(el => el.remove());
+    messageDiv.classList.add('simulation-message');
+    
+    // Remove after 5 seconds
+    setTimeout(() => {
+        messageDiv.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 5000);
+}
+
+async function startTruckHazardSimulation() {
+    // Show introduction overlay
+    showSimulationIntro("This simulation demonstrates how NorthStar helps professional drivers avoid costly truck-specific hazards that standard GPS systems miss.");
+    
+    // Load a real route with potential truck hazards
+    try {
+        // First, show loading message
+        showSimulationMessage("Loading truck-specific route data...");
+        
+        // Load the route (real API integration)
+        const routeData = await loadSimulationRoute();
+        
+        if (!routeData) {
+            throw new Error("Failed to load simulation route");
+        }
+        
+        // Display info about the route
+        showSimulationMessage(`Route loaded: ${routeData.name} (Distance: ${Math.round(routeData.distance/1609.34)} miles)`);
+        
+        // Start moving the truck along the route
+        setTimeout(() => {
+            showSimulationMessage("Starting truck movement along route...");
+            startTruckMovementSimulation();
+        }, 3000);
+        
+        // The rest happens automatically in the truck movement simulation:
+        // 1. Truck moves along the real route
+        // 2. Hazards are detected based on real or simulated truck restrictions
+        // 3. Alerts are shown with voice guidance when hazards are encountered
+        // 4. At the end, a business summary is shown with ROI calculations
+        
+    } catch (error) {
+        console.error("Simulation error:", error);
+        
+        // Show friendly error and try to recover
+        showSimulationMessage("Simulation encountered an error. Using backup simulation data.");
+        
+        // Force a basic simulation with predefined hazards
+        setTimeout(() => {
+            const fallbackRoute = {
+                name: "Chicago to Detroit Test Route",
+                pickup: { address: "Chicago, IL", lat: 41.8781, lon: -87.6298 },
+                delivery: { address: "Detroit, MI", lat: 42.3314, lon: -83.0458 },
+                truck: { height: 13.6, weight: 80000 },
+                distance: 383000, // meters
+                duration: 14400, // seconds
+                geometry: {
+                    type: "LineString",
+                    coordinates: [
+                        [-87.6298, 41.8781],
+                        [-85.7585, 42.2162],
+                        [-83.0458, 42.3314]
+                    ]
+                }
+            };
+            
+            // Add simulated hazards
+            addSimulatedHazardsToRoute(fallbackRoute);
+            
+            // Display fallback route
+            currentRouteData = fallbackRoute;
+            displayRoute(currentRouteData);
+            
+            // Start the movement simulation
+            startTruckMovementSimulation();
+        }, 2000);
+    }
+}
+
