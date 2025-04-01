@@ -2799,3 +2799,67 @@ async function startTruckHazardSimulation() {
     }
 }
 
+// Add to your existing page initialization code
+document.addEventListener('DOMContentLoaded', function() {
+    const simulationMode = document.getElementById('simulationMode');
+    
+    if (simulationMode) {
+        simulationMode.addEventListener('change', function() {
+            const formContainer = document.querySelector('#routeForm');
+            
+            if (this.checked) {
+                // Show simulation controls
+                if (!document.getElementById('simulationControls')) {
+                    const simulationPanel = document.createElement('div');
+                    simulationPanel.id = 'simulationControls';
+                    simulationPanel.className = 'mt-6 p-4 bg-yellow-50 rounded-md border-l-4 border-yellow-500';
+                    simulationPanel.innerHTML = `
+                        <h3 class="font-medium text-yellow-800 mb-2">Truck Hazard Simulation</h3>
+                        <p class="text-sm text-yellow-700 mb-4">Experience a real-world demonstration of how NorthStar protects trucks from costly hazards.</p>
+                        <button id="startSimulationBtn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-3 px-4 rounded-md flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                            </svg>
+                            Start 60-Second Hazard Demo
+                        </button>
+                    `;
+                    
+                    // Add before the submit button
+                    const submitButton = document.querySelector('button[type="submit"]');
+                    if (submitButton && submitButton.parentNode) {
+                        submitButton.parentNode.parentNode.insertBefore(simulationPanel, submitButton.parentNode);
+                    } else {
+                        formContainer.appendChild(simulationPanel);
+                    }
+                    
+                    // Add event listener for simulation button
+                    document.getElementById('startSimulationBtn').addEventListener('click', function(e) {
+                        e.preventDefault();
+                        startTruckHazardSimulation();
+                    });
+                }
+            } else {
+                // Remove simulation controls if they exist
+                const simulationControls = document.getElementById('simulationControls');
+                if (simulationControls) {
+                    simulationControls.remove();
+                }
+            }
+        });
+    }
+    
+    // Check if we should activate simulation mode on load (e.g., from URL)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('simulation') === 'true' && simulationMode) {
+        simulationMode.checked = true;
+        simulationMode.dispatchEvent(new Event('change'));
+        
+        // Optionally auto-start simulation after a delay
+        setTimeout(() => {
+            const startButton = document.getElementById('startSimulationBtn');
+            if (startButton) {
+                startButton.click();
+            }
+        }, 1000);
+    }
+});
