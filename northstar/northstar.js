@@ -16,7 +16,8 @@ const API_ENDPOINTS = {
     getDriver: 'api.php?action=getDriver',
     updatePosition: 'api.php?action=updatePosition',
     logActivity: 'api.php?action=logActivity',
-    osrm: 'https://router.project-osrm.org/route/v1/driving/',
+    validateTruckRoute: 'api.php?action=validateTruckRoute', // 👈 Add this
+    osrm: 'https://router.project-osrm.org/route/v1/driving/', // (We'll replace this later
     geocode: 'https://nominatim.openstreetmap.org/search'
 };
 

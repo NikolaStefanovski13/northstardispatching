@@ -95,6 +95,32 @@ $action = isset($_GET['action']) ? $_GET['action'] : '';
 
 # Handle different API actions
 switch ($action) {
+    case 'validateTruckRoute':
+        $postData = json_decode(file_get_contents('php://input'), true);
+
+        // Required fields
+        if (empty($postData['pickup']) || empty($postData['delivery']) || empty($postData['truck'])) {
+            http_response_code(400);
+            die(json_encode(['error' => 'Missing pickup, delivery, or truck specs']));
+        }
+
+        // Call OpenRouteService (free tier)
+        $apiKey = "5b3ce3597851110001cf6248d537c887ab8b40409e05940495d5c8ca"; // 👈 KINGMAKER KEY";
+        $url = "https://api.openrouteservice.org/v2/directions/driving-hgv?" .
+            "api_key=$apiKey" .
+            "&start={$postData['pickup']['lon']},{$postData['pickup']['lat']}" .
+            "&end={$postData['delivery']['lon']},{$postData['delivery']['lat']}" .
+            "&height=" . ($postData['truck']['height'] * 0.3048) . // Convert feet → meters
+            "&weight=" . ($postData['truck']['weight'] * 0.453592); // Convert lbs → kg
+
+        $response = file_get_contents($url);
+        $data = json_decode($response, true);
+
+        // Check if route has truck restrictions
+        $isValid = !isset($data['routes'][0]['warnings']['truck_restrictions']);
+
+        echo json_encode(['valid' => $isValid]);
+        break;
     // =============================================
     // ROUTE OPERATIONS
     // =============================================
@@ -1244,4 +1270,48 @@ $db->close();
 function generateToken()
 {
     return bin2hex(random_bytes(16));
+}
+
+
+# Rate limiting (100 requests/minute per IP)
+$redis = new Redis();
+try {
+    $redis->connect('127.0.0.1', 6379);
+    $ip = $_SERVER['REMOTE_ADDR'];
+    $key = "rate_limit:$ip";
+
+    $current = $redis->get($key);
+    if ($current && $current >= 100) {
+        http_response_code(429);
+        die(json_encode(['error' => 'Too many requests - limit 100/minute']));
+    }
+
+    $redis->multi()
+        ->incr($key)
+        ->expire($key, 60)
+        ->exec();
+} catch (Exception $e) {
+    // Fallthrough if Redis fails
+}
+
+# SQLite fallback rate limiting
+$db->exec('CREATE TABLE IF NOT EXISTS rate_limits (
+    ip TEXT PRIMARY KEY,
+    count INTEGER,
+    last_update INTEGER
+)');
+
+$ip = SQLite3::escapeString($_SERVER['REMOTE_ADDR']);
+$now = time();
+$window = 60; // 1 minute
+
+$result = $db->querySingle("SELECT count, last_update FROM rate_limits WHERE ip = '$ip'", true);
+if ($result && $now - $result['last_update'] < $window) {
+    if ($result['count'] >= 100) {
+        http_response_code(429);
+        die(json_encode(['error' => 'Too many requests']));
+    }
+    $db->exec("UPDATE rate_limits SET count = count + 1 WHERE ip = '$ip'");
+} else {
+    $db->exec("INSERT OR REPLACE INTO rate_limits VALUES ('$ip', 1, $now)");
 }
