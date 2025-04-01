@@ -821,8 +821,14 @@ function simulateRouteData(token) {
                 { instruction: 'Take exit 33 toward Detroit', distance: 0.5 },
                 { instruction: 'Turn left onto Elm St', distance: 0.2 }
             ]
+            
         };
-        
+        routePreferences: {
+            avoidWeighStations: document.getElementById('avoidWeighStations')?.checked || false,
+            showWeighStations: document.getElementById('showWeighStations')?.checked || false,
+            weighStationAlerts: document.getElementById('weighStationAlerts')?.checked || false
+          }
+        };
         // Store in localStorage for testing
         localStorage.setItem(`route_${token}`, JSON.stringify(routeData));
         debug('Simulated route stored in localStorage');
