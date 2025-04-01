@@ -19,6 +19,7 @@ const API_ENDPOINTS = {
     validateTruckRoute: 'api.php?action=validateTruckRoute', // 👈 Add this
     osrm: 'https://router.project-osrm.org/route/v1/driving/', // (We'll replace this later
     geocode: 'https://nominatim.openstreetmap.org/search'
+    validateTruckRoute: 'api.php?action=validateTruckRoute',
 };
 
 // =================================================================
@@ -1502,7 +1503,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function handleRouteFormSubmit(event) {
     event.preventDefault();
-    
+    // Add this after a successful validation
+if (validationResult.valid) {
+    const resultsDiv = document.getElementById('routeResults');
+    const truckSafeIndicator = document.createElement('div');
+    truckSafeIndicator.className = 'bg-green-100 text-green-800 p-3 rounded-md mb-4 flex items-center';
+    truckSafeIndicator.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span><strong>Truck-Safe Route:</strong> This route has been validated for your truck specifications (${truckHeight}' height, ${truckWeight} lbs)</span>
+    `;
+    resultsDiv.insertBefore(truckSafeIndicator, resultsDiv.firstChild);
+}
     // Get form data
     const form = event.target;
     const routeName = document.getElementById('routeName').value;
