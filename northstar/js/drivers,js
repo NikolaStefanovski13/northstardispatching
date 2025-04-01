@@ -1,0 +1,580 @@
+// =================================================================
+// DRIVERS MANAGEMENT CONFIGURATION
+// =================================================================
+
+const API_ENDPOINTS = {
+    getAllDrivers: 'api.php?action=getAllDrivers',
+    getDriver: 'api.php?action=getDriver',
+    createDriver: 'api.php?action=createDriver',
+    updateDriver: 'api.php?action=updateDriver',
+    deleteDriver: 'api.php?action=deleteDriver'
+};
+
+// =================================================================
+// INITIALIZATION
+// =================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Driver management interface initialized');
+    
+    // Setup event listeners
+    setupEventListeners();
+    
+    // Load initial data
+    fetchAllDrivers();
+});
+
+/**
+ * Set up all event listeners
+ */
+function setupEventListeners() {
+    // Toggle mobile menu
+    const menuButton = document.querySelector('button.md\\:hidden');
+    const mobileMenu = document.getElementById('mobileMenu');
+    
+    if (menuButton && mobileMenu) {
+        menuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+    }
+    
+    // Refresh button
+    const refreshButton = document.getElementById('refreshDrivers');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', fetchAllDrivers);
+    }
+    
+    // Status filter
+    const statusFilter = document.getElementById('statusFilter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', () => {
+            filterDrivers();
+        });
+    }
+    
+    // Search input
+    const searchInput = document.getElementById('searchDrivers');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            filterDrivers();
+        });
+    }
+    
+    // Add driver button
+    const addDriverBtn = document.getElementById('addDriverBtn');
+    if (addDriverBtn) {
+        addDriverBtn.addEventListener('click', () => {
+            showDriverModal();
+        });
+    }
+    
+    // Close modal buttons
+    const closeModalBtn = document.getElementById('closeModal');
+    const cancelBtn = document.getElementById('cancelBtn');
+    
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', hideDriverModal);
+    }
+    
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', hideDriverModal);
+    }
+    
+    // Driver form submission
+    const driverForm = document.getElementById('driverForm');
+    if (driverForm) {
+        driverForm.addEventListener('submit', handleDriverFormSubmit);
+    }
+    
+    // Delete modal buttons
+    const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    
+    if (cancelDeleteBtn) {
+        cancelDeleteBtn.addEventListener('click', hideDeleteModal);
+    }
+    
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', () => {
+            const driverToken = confirmDeleteBtn.dataset.token;
+            if (driverToken) {
+                deleteDriver(driverToken);
+            }
+        });
+    }
+}
+
+// =================================================================
+// DATA FETCHING AND MANIPULATION
+// =================================================================
+
+/**
+ * Fetch all drivers from the API
+ */
+async function fetchAllDrivers() {
+    try {
+        // Show loading state
+        const driversTableBody = document.getElementById('driversTableBody');
+        if (driversTableBody) {
+            driversTableBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Loading drivers...</td></tr>';
+        }
+        
+        // Get status filter value
+        const statusFilter = document.getElementById('statusFilter');
+        let endpoint = API_ENDPOINTS.getAllDrivers;
+        
+        if (statusFilter && statusFilter.value) {
+            endpoint += `&status=${statusFilter.value}`;
+        }
+        
+        // Fetch drivers from API
+        const response = await fetch(endpoint);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch drivers');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.drivers) {
+            // Store drivers in a data attribute for filtering
+            driversTableBody.dataset.drivers = JSON.stringify(data.drivers);
+            
+            // Render drivers
+            renderDrivers(data.drivers);
+        } else {
+            throw new Error('Invalid API response');
+        }
+    } catch (error) {
+        console.error('Error fetching drivers:', error);
+        
+        const driversTableBody = document.getElementById('driversTableBody');
+        if (driversTableBody) {
+            driversTableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Error loading drivers: ${error.message}</td></tr>`;
+        }
+    }
+}
+
+/**
+ * Filter drivers based on search input and status filter
+ */
+function filterDrivers() {
+    const searchInput = document.getElementById('searchDrivers');
+    const statusFilter = document.getElementById('statusFilter');
+    const driversTableBody = document.getElementById('driversTableBody');
+    
+    if (!driversTableBody || !driversTableBody.dataset.drivers) {
+        return;
+    }
+    
+    try {
+        const drivers = JSON.parse(driversTableBody.dataset.drivers);
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+        const statusValue = statusFilter ? statusFilter.value : '';
+        
+        // Filter drivers
+        const filteredDrivers = drivers.filter(driver => {
+            // Status filter
+            if (statusValue && driver.status !== statusValue) {
+                return false;
+            }
+            
+            // Search filter
+            if (searchTerm) {
+                const nameMatch = driver.name.toLowerCase().includes(searchTerm);
+                const emailMatch = driver.email ? driver.email.toLowerCase().includes(searchTerm) : false;
+                const phoneMatch = driver.phone ? driver.phone.includes(searchTerm) : false;
+                
+                return nameMatch || emailMatch || phoneMatch;
+            }
+            
+            return true;
+        });
+        
+        // Render filtered drivers
+        renderDrivers(filteredDrivers);
+    } catch (error) {
+        console.error('Error filtering drivers:', error);
+    }
+}
+
+/**
+ * Fetch driver details by token
+ * @param {string} token - Driver token
+ */
+async function fetchDriverDetails(token) {
+    try {
+        const response = await fetch(`${API_ENDPOINTS.getDriver}&token=${token}`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch driver details');
+        }
+        
+        const data = await response.json();
+        
+        if (!data.error) {
+            return data;
+        } else {
+            throw new Error(data.error);
+        }
+    } catch (error) {
+        console.error('Error fetching driver details:', error);
+        alert('Error loading driver details: ' + error.message);
+        return null;
+    }
+}
+
+/**
+ * Create a new driver
+ * @param {Object} driverData - Driver data to create
+ */
+async function createDriver(driverData) {
+    try {
+        const response = await fetch(API_ENDPOINTS.createDriver, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(driverData)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to create driver');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Driver created successfully');
+            fetchAllDrivers();
+            hideDriverModal();
+        } else {
+            throw new Error(data.error || 'Unknown error');
+        }
+    } catch (error) {
+        console.error('Error creating driver:', error);
+        alert('Error creating driver: ' + error.message);
+    }
+}
+
+/**
+ * Update an existing driver
+ * @param {string} token - Driver token
+ * @param {Object} driverData - Driver data to update
+ */
+async function updateDriver(token, driverData) {
+    try {
+        const response = await fetch(`${API_ENDPOINTS.updateDriver}&token=${token}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(driverData)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to update driver');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Driver updated successfully');
+            fetchAllDrivers();
+            hideDriverModal();
+        } else {
+            throw new Error(data.error || 'Unknown error');
+        }
+    } catch (error) {
+        console.error('Error updating driver:', error);
+        alert('Error updating driver: ' + error.message);
+    }
+}
+
+/**
+ * Delete a driver
+ * @param {string} token - Driver token
+ */
+async function deleteDriver(token) {
+    try {
+        const response = await fetch(`${API_ENDPOINTS.deleteDriver}&token=${token}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete driver');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Driver deleted successfully');
+            fetchAllDrivers();
+            hideDeleteModal();
+        } else {
+            throw new Error(data.error || 'Unknown error');
+        }
+    } catch (error) {
+        console.error('Error deleting driver:', error);
+        alert('Error deleting driver: ' + error.message);
+    }
+}
+
+// =================================================================
+// UI RENDERING
+// =================================================================
+
+/**
+ * Render drivers in the table
+ * @param {Array} drivers - Array of driver objects
+ */
+function renderDrivers(drivers) {
+    const driversTableBody = document.getElementById('driversTableBody');
+    if (!driversTableBody) return;
+    
+    if (!drivers || drivers.length === 0) {
+        driversTableBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No drivers found</td></tr>';
+        return;
+    }
+    
+    driversTableBody.innerHTML = '';
+    
+    drivers.forEach(driver => {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50';
+        
+        // Create a color for driver avatar based on initials
+        const colors = ['bg-blue-600', 'bg-green-600', 'bg-purple-600', 'bg-red-600', 'bg-pink-600', 'bg-indigo-600', 'bg-yellow-600'];
+        const colorIndex = driver.name.charCodeAt(0) % colors.length;
+        const avatarColor = colors[colorIndex];
+        
+        // Create a status badge class
+        let statusBadgeClass = '';
+        switch (driver.status) {
+            case 'available':
+                statusBadgeClass = 'status-badge available';
+                break;
+            case 'on-duty':
+                statusBadgeClass = 'status-badge on-duty';
+                break;
+            case 'off-duty':
+                statusBadgeClass = 'status-badge off-duty';
+                break;
+            case 'on-break':
+                statusBadgeClass = 'status-badge on-break';
+                break;
+            default:
+                statusBadgeClass = 'status-badge';
+        }
+        
+        row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                    <div class="h-10 w-10 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold mr-3 flex-shrink-0">
+                        ${driver.initials || driver.name.charAt(0)}
+                    </div>
+                    <div>
+                        <div class="text-sm font-medium text-gray-900">${driver.name}</div>
+                        <div class="text-sm text-gray-500">ID: ${driver.id}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">${driver.phone || 'No phone'}</div>
+                <div class="text-sm text-gray-500">${driver.email || 'No email'}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="${statusBadgeClass}">${formatStatus(driver.status)}</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                ${driver.current_route ? 
+                `<div class="text-sm text-gray-900">${driver.current_route.name}</div>
+                <div class="text-sm text-gray-500">${formatStatus(driver.current_route.status)}</div>` : 
+                '<span class="text-sm text-gray-500">No active route</span>'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button class="text-blue-600 hover:text-blue-900 mr-3 edit-driver" data-token="${driver.token}">Edit</button>
+                <button class="text-red-600 hover:text-red-900 delete-driver" data-token="${driver.token}">Delete</button>
+            </td>
+        `;
+        
+        driversTableBody.appendChild(row);
+        
+        // Add event listeners to buttons
+        const editButton = row.querySelector('.edit-driver');
+        const deleteButton = row.querySelector('.delete-driver');
+        
+        if (editButton) {
+            editButton.addEventListener('click', () => {
+                editDriver(driver.token);
+            });
+        }
+        
+        if (deleteButton) {
+            deleteButton.addEventListener('click', () => {
+                showDeleteModal(driver.token, driver.name);
+            });
+        }
+    });
+}
+
+/**
+ * Format driver status for display
+ * @param {string} status - Driver status
+ * @returns {string} Formatted status
+ */
+function formatStatus(status) {
+    switch (status) {
+        case 'available':
+            return 'Available';
+        case 'on-duty':
+            return 'On Duty';
+        case 'off-duty':
+            return 'Off Duty';
+        case 'on-break':
+            return 'On Break';
+        case 'pending':
+            return 'Pending';
+        case 'in_progress':
+            return 'In Progress';
+        case 'loading':
+            return 'Loading';
+        case 'unloading':
+            return 'Unloading';
+        case 'completed':
+            return 'Completed';
+        case 'cancelled':
+            return 'Cancelled';
+        default:
+            return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown';
+    }
+}
+
+// =================================================================
+// MODAL HANDLING
+// =================================================================
+
+/**
+ * Show driver modal for creating/editing a driver
+ * @param {Object} driverData - Driver data for editing (optional)
+ */
+function showDriverModal(driverData = null) {
+    const modal = document.getElementById('driverModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const driverForm = document.getElementById('driverForm');
+    
+    if (!modal || !modalTitle || !driverForm) return;
+    
+    // Reset form
+    driverForm.reset();
+    
+    // Set form mode (add/edit)
+    if (driverData) {
+        modalTitle.textContent = 'Edit Driver';
+        
+        // Populate form fields
+        document.getElementById('driverToken').value = driverData.token;
+        document.getElementById('driverName').value = driverData.name;
+        document.getElementById('driverInitials').value = driverData.initials;
+        document.getElementById('driverStatus').value = driverData.status || 'available';
+        document.getElementById('driverPhone').value = driverData.phone || '';
+        document.getElementById('driverEmail').value = driverData.email || '';
+    } else {
+        modalTitle.textContent = 'Add New Driver';
+        document.getElementById('driverToken').value = '';
+    }
+    
+    // Show modal
+    modal.classList.remove('hidden');
+}
+
+/**
+ * Hide driver modal
+ */
+function hideDriverModal() {
+    const modal = document.getElementById('driverModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+/**
+ * Show delete confirmation modal
+ * @param {string} token - Driver token
+ * @param {string} name - Driver name
+ */
+function showDeleteModal(token, name) {
+    const modal = document.getElementById('deleteModal');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    
+    if (!modal || !confirmBtn) return;
+    
+    // Set driver token on confirm button
+    confirmBtn.dataset.token = token;
+    
+    // Update modal message
+    const modalMessage = modal.querySelector('p');
+    if (modalMessage) {
+        modalMessage.textContent = `Are you sure you want to delete driver "${name}"? This action cannot be undone.`;
+    }
+    
+    // Show modal
+    modal.classList.remove('hidden');
+}
+
+/**
+ * Hide delete confirmation modal
+ */
+function hideDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+/**
+ * Handle driver form submission
+ * @param {Event} event - Form submission event
+ */
+async function handleDriverFormSubmit(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const driverToken = document.getElementById('driverToken').value;
+    
+    // Gather form data
+    const driverData = {
+        name: document.getElementById('driverName').value,
+        initials: document.getElementById('driverInitials').value,
+        status: document.getElementById('driverStatus').value,
+        phone: document.getElementById('driverPhone').value,
+        email: document.getElementById('driverEmail').value
+    };
+    
+    // Validate required fields
+    if (!driverData.name) {
+        alert('Driver name is required');
+        return;
+    }
+    
+    // Create or update driver
+    if (driverToken) {
+        // Update existing driver
+        updateDriver(driverToken, driverData);
+    } else {
+        // Create new driver
+        createDriver(driverData);
+    }
+}
+
+/**
+ * Edit a driver
+ * @param {string} token - Driver token
+ */
+async function editDriver(token) {
+    const driverData = await fetchDriverDetails(token);
+    
+    if (driverData) {
+        showDriverModal(driverData);
+    }
+}

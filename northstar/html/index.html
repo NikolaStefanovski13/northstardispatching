@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NorthStar - Route Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .northstar-header {
+            background: linear-gradient(to right, #2563eb, #1d4ed8);
+            color: white;
+        }
+        .northstar-btn {
+            transition: all 0.2s ease;
+        }
+        .northstar-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        /* Add to your style section in HTML */
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+    }
+    
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+    }
+    
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+    }
+}
+
+.pulse-animation {
+    animation: pulse 2s infinite;
+}
+
+.truck-icon {
+    animation: truck-movement 1s infinite alternate;
+}
+
+@keyframes truck-movement {
+    from { transform: translateY(0px); }
+    to { transform: translateY(-3px); }
+}
+
+.animate-pulse {
+    animation: pulse-opacity 2s infinite;
+}
+
+@keyframes pulse-opacity {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.route-highlight {
+    stroke-dasharray: 10;
+    animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: 20;
+    }
+}
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <header class="northstar-header p-4 shadow-md">
+        <div class="container mx-auto flex items-center justify-between">
+            <div class="flex items-center">
+                <svg class="h-8 w-8 mr-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
+                </svg>
+                <h1 class="text-2xl font-bold">NorthStar</h1>
+            </div>
+            <div class="flex items-center">
+                <nav class="hidden md:flex items-center space-x-4">
+                    <a href="index.html" class="text-white hover:text-blue-100 font-medium">Create Route</a>
+                    <a href="dashboard.html" class="text-white hover:text-blue-100 font-medium">Dashboard</a>
+                    <a href="drivers.html" class="text-white hover:text-blue-100 font-medium">Manage Drivers</a>
+                    <a href="tracking.html" class="text-white hover:text-blue-100 font-medium">Live Tracking</a>
+                    <a href="reports.html" class="text-white hover:text-blue-100 font-medium">Reports</a>
+                </nav>
+                <!-- Mobile menu button -->
+                <button class="md:hidden text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile menu (hidden by default) -->
+        <div class="md:hidden hidden" id="mobileMenu">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="index.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Create Route</a>
+                <a href="dashboard.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Dashboard</a>
+                <a href="drivers.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Manage Drivers</a>
+                <a href="tracking.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Live Tracking</a>
+                <a href="reports.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Reports</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Rest of the content remains the same -->
+
+    <main class="container mx-auto p-4 my-8">
+        <div class="bg-white rounded-lg shadow-md p-6 max-w-4xl mx-auto">
+            <h2 class="text-xl font-semibold mb-6">Create New Route</h2>
+            
+            <form id="routeForm" class="space-y-6">
+                <!-- Route Name -->
+                 <!-- Add this to your index.html form section -->
+<div class="mt-6 p-4 bg-blue-50 rounded-md">
+    <div class="flex items-center mb-2">
+      <input type="checkbox" id="simulationMode" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+      <label for="simulationMode" class="ml-2 font-medium text-blue-800">Enable Test Mode</label>
+    </div>
+    <p class="text-sm text-blue-600">Activates simulation features for testing truck-specific routing without a real truck.</p>
+  </div>
+  <!-- Add this to your form section in index.html -->
+<div class="mb-4 border-t border-gray-200 pt-4 mt-4">
+    <h3 class="text-lg font-medium mb-3">Advanced Routing Options</h3>
+    
+    <div class="flex items-center mb-2">
+      <input type="checkbox" id="avoidWeighStations" name="avoidWeighStations" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+      <label for="avoidWeighStations" class="ml-2">Avoid weigh stations when possible</label>
+    </div>
+    
+    <div class="flex items-center mb-2">
+      <input type="checkbox" id="showWeighStations" name="showWeighStations" class="h-4 w-4 text-blue-600 focus:ring-blue-500" checked>
+      <label for="showWeighStations" class="ml-2">Show weigh stations on route</label>
+    </div>
+    
+    <div class="flex items-center">
+      <input type="checkbox" id="weighStationAlerts" name="weighStationAlerts" class="h-4 w-4 text-blue-600 focus:ring-blue-500" checked>
+      <label for="weighStationAlerts" class="ml-2">Receive voice alerts for upcoming weigh stations</label>
+    </div>
+  </div>
+                <div>
+                    <label for="routeName" class="block text-sm font-medium text-gray-700 mb-1">Route Name</label>
+                    <input type="text" id="routeName" name="routeName" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
+                           placeholder="Chicago to Detroit">
+                </div>
+                
+                <!-- Pickup Location -->
+                <div>
+                    <label for="pickupLocation" class="block text-sm font-medium text-gray-700 mb-1">Pickup Location</label>
+                    <input type="text" id="pickupLocation" name="pickupLocation" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
+                           placeholder="123 Main St, Chicago, IL">
+                </div>
+                
+                <!-- Delivery Location -->
+                <div>
+                    <label for="deliveryLocation" class="block text-sm font-medium text-gray-700 mb-1">Delivery Location</label>
+                    <input type="text" id="deliveryLocation" name="deliveryLocation" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
+                           placeholder="456 Elm St, Detroit, MI">
+                </div>
+                
+              
+                
+                <!-- Notes for Driver -->
+                <div>
+                    <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes for Driver</label>
+                    <textarea id="notes" name="notes" rows="3" 
+                              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
+                              placeholder="Special instructions, access codes, or other information..."></textarea>
+                </div>
+                <!-- Add these just before the Submit button -->
+<div class="mb-4">
+    <label class="block text-gray-700 font-medium mb-2">Truck Height (feet)</label>
+    <input type="number" id="truckHeight" name="truckHeight" class="w-full px-3 py-2 border rounded-md" step="0.1" value="13.6">
+    <span class="text-sm text-gray-500">Standard semi is 13'6" (13.6 feet)</span>
+</div>
+
+<div class="mb-4">
+    <label class="block text-gray-700 font-medium mb-2">Truck Weight (lbs)</label>
+    <input type="number" id="truckWeight" name="truckWeight" class="w-full px-3 py-2 border rounded-md" step="1000" value="80000">
+    <span class="text-sm text-gray-500">Maximum legal weight is 80,000 lbs</span>
+</div>
+                <!-- Submit Button -->
+                <div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-md shadow-sm northstar-btn">
+                        Create Route
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Results will show here after form submission -->
+            <div id="routeResults" class="mt-8 hidden">
+                <div class="border-t border-gray-200 pt-6">
+                    <h3 class="text-lg font-semibold mb-4">Route Created Successfully</h3>
+                    
+                    <div class="bg-gray-50 p-4 rounded-md mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700">Share with Driver:</span>
+                            <button id="copyLink" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Copy Link</button>
+                        </div>
+                        <input type="text" id="shareLink" readonly 
+                               class="w-full px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-500">
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h4 class="text-md font-medium mb-2">Route Details:</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-600">Estimated Distance:</p>
+                                <p class="font-medium" id="routeDistance"></p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Estimated Time:</p>
+                                <p class="font-medium" id="routeTime"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div>
+            <label for="driverSelect" class="block text-sm font-medium text-gray-700 mb-1">Assign Driver (Optional)</label>
+            <select id="driverSelect" name="driverSelect" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                <option value="">-- Select a driver --</option>
+                <!-- Drivers will be populated here by JavaScript -->
+            </select>
+        </div>
+
+        <!-- Add this somewhere in your driver.html for debugging -->
+<div id="debug" style="position: fixed; bottom: 0; right: 0; background: white; padding: 10px; border: 1px solid black; display: none;">
+    <h3>Debug Info</h3>
+    <pre id="debugInfo"></pre>
+    <button onclick="document.getElementById('debug').style.display = 'none'">Close</button>
+</div>
+
+    </main>
+
+    <footer class="bg-gray-800 text-white p-6 mt-auto">
+        <div class="container mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center">
+                        <svg class="h-6 w-6 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
+                        </svg>
+                        <span class="font-semibold">North Star</span>
+                    </div>
+                    <p class="text-sm text-gray-400 mt-1">The Navigator's Choice</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-400">&copy; 2025 NorthStar - Project made by Nikola Stefanovski. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="northstar.js"></script>
+</body>
+</html>
