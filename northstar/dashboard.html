@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NorthStar - Dispatcher Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .northstar-header {
+            background: linear-gradient(to right, #2563eb, #1d4ed8);
+            color: white;
+        }
+        .northstar-btn {
+            transition: all 0.2s ease;
+        }
+        .northstar-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        #map {
+            height: 400px;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <header class="northstar-header p-4 shadow-md">
+        <div class="container mx-auto flex items-center justify-between">
+            <div class="flex items-center">
+                <svg class="h-8 w-8 mr-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
+                </svg>
+                <h1 class="text-2xl font-bold">NorthStar</h1>
+            </div>
+            <div class="flex items-center">
+                <nav class="hidden md:flex items-center space-x-4">
+                    <a href="index.html" class="text-white hover:text-blue-100 font-medium">Create Route</a>
+                    <a href="dashboard.html" class="text-white hover:text-blue-100 font-medium">Dashboard</a>
+                    <a href="drivers.html" class="text-white hover:text-blue-100 font-medium">Manage Drivers</a>
+                    <a href="tracking.html" class="text-white hover:text-blue-100 font-medium">Live Tracking</a>
+                    <a href="reports.html" class="text-white hover:text-blue-100 font-medium">Reports</a>
+                </nav>
+                <!-- Mobile menu button -->
+                <button class="md:hidden text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile menu (hidden by default) -->
+        <div class="md:hidden hidden" id="mobileMenu">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="index.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Create Route</a>
+                <a href="dashboard.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Dashboard</a>
+                <a href="drivers.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Manage Drivers</a>
+                <a href="tracking.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Live Tracking</a>
+                <a href="reports.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Reports</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 my-8">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Active Routes</h2>
+                <div class="flex space-x-2">
+                    <button id="refreshRoutes" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-sm northstar-btn">
+                        Refresh
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Route Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pickup</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="routesTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Routes will be populated here by JavaScript -->
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                                Loading routes...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Route Detail View -->
+        <div id="routeDetailPanel" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="detailRouteTitle" class="text-xl font-semibold">Route Details</h2>
+                <button id="closeRouteDetail" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <div class="mb-4">
+                        <h3 class="text-md font-medium text-gray-700 mb-2">Route Information</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-600">Distance:</p>
+                                <p id="detailDistance" class="font-medium">-</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Duration:</p>
+                                <p id="detailDuration" class="font-medium">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h3 class="text-md font-medium text-gray-700 mb-2">Locations</h3>
+                        <div class="space-y-2">
+                            <div>
+                                <p class="text-sm text-gray-600">Pickup:</p>
+                                <p id="detailPickup" class="font-medium">-</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Delivery:</p>
+                                <p id="detailDelivery" class="font-medium">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h3 class="text-md font-medium text-gray-700 mb-2">Truck Specifications</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-600">Height:</p>
+                                <p id="detailTruckHeight" class="font-medium">-</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Weight:</p>
+                                <p id="detailTruckWeight" class="font-medium">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h3 class="text-md font-medium text-gray-700 mb-2">Driver Notes</h3>
+                        <p id="detailNotes" class="text-sm bg-gray-50 p-3 rounded-md">-</p>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-md font-medium text-gray-700 mb-2">Share Link</h3>
+                        <div class="flex items-center space-x-2">
+                            <input id="detailShareLink" type="text" readonly class="flex-grow px-4 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-500">
+                            <button id="detailCopyLink" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-sm northstar-btn">
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div id="map" class="rounded-md overflow-hidden"></div>
+                    
+                    <div class="mt-4">
+                        <h3 class="text-md font-medium text-gray-700 mb-2">Turn-by-Turn Directions</h3>
+                        <ul id="detailDirections" class="space-y-2 text-sm">
+                            <!-- Directions will be populated here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 pt-4 border-t border-gray-200 flex justify-end space-x-3">
+                <button id="editRoute" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md shadow-sm northstar-btn">
+                    Edit Route
+                </button>
+                <button id="deleteRoute" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md shadow-sm northstar-btn">
+                    Delete Route
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white p-6 mt-auto">
+        <div class="container mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center">
+                        <svg class="h-6 w-6 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
+                        </svg>
+                        <span class="font-semibold">North Star</span>
+                    </div>
+                    <p class="text-sm text-gray-400 mt-1">The Navigator's Choice</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-400">&copy; 2025 NorthStar - All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>
