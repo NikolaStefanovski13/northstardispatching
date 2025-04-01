@@ -1497,3 +1497,113 @@ document.addEventListener('DOMContentLoaded', () => {
         initDriverInterface();
     }
 });
+
+//new start
+
+async function handleRouteFormSubmit(event) {
+    event.preventDefault();
+    
+    // Get form data
+    const form = event.target;
+    const routeName = document.getElementById('routeName').value;
+    const pickupLocation = document.getElementById('pickupLocation').value;
+    const deliveryLocation = document.getElementById('deliveryLocation').value;
+    const truckHeight = document.getElementById('truckHeight').value;
+    const truckWeight = document.getElementById('truckWeight').value;
+    
+    // Validation
+    if (!routeName || !pickupLocation || !deliveryLocation) {
+        alert('Please fill in all required fields');
+        return;
+    }
+    
+    // Show loading indicator
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    submitButton.textContent = 'Calculating Route...';
+    submitButton.disabled = true;
+    
+    try {
+        // Geocode pickup and delivery addresses
+        const pickup = await geocodeAddress(pickupLocation);
+        const delivery = await geocodeAddress(deliveryLocation);
+        
+        // STEP 1: First validate if the route is truck-safe
+        const validationResponse = await fetch(API_ENDPOINTS.validateTruckRoute, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                pickup: {
+                    lat: pickup.lat,
+                    lon: pickup.lon
+                },
+                delivery: {
+                    lat: delivery.lat,
+                    lon: delivery.lon
+                },
+                truck: {
+                    height: parseFloat(truckHeight),
+                    weight: parseFloat(truckWeight)
+                }
+            })
+        });
+        
+        const validationResult = await validationResponse.json();
+        
+        // Check if the route is valid for trucks
+        if (!validationResult.valid) {
+            // Display truck-specific warning
+            alert('WARNING: This route has restrictions for your truck specifications. It may contain low bridges or weight-restricted roads.');
+            
+            // Optional: You can still allow them to proceed or block completely
+            if (!confirm('Do you still want to create this route?')) {
+                submitButton.textContent = originalText;
+                submitButton.disabled = false;
+                return;
+            }
+        }
+        
+        // If valid (or user confirmed), proceed with standard routing
+        const route = await calculateRoute(pickup, delivery);
+        
+        // Extract directions and continue with your existing code...
+        // ...
+
+        // Create route data object
+        const routeData = {
+            name: routeName,
+            pickup: {
+                address: pickupLocation,
+                lat: pickup.lat,
+                lon: pickup.lon
+            },
+            delivery: {
+                address: deliveryLocation,
+                lat: delivery.lat,
+                lon: delivery.lon
+            },
+            truck: {
+                height: parseFloat(truckHeight),
+                weight: parseFloat(truckWeight)
+            },
+            notes: document.getElementById('notes')?.value || '',
+            distance: route.distance,
+            duration: route.duration,
+            geometry: route.geometry,
+            directions: extractDirectionsFromRoute(route)
+        };
+        
+        // Save route to API
+        // Your existing code for saving...
+        
+    } catch (error) {
+        console.error('Error creating route:', error);
+        alert('Error: ' + error.message);
+    } finally {
+        // Reset button
+        submitButton.textContent = originalText;
+        submitButton.disabled = false;
+    }
+}
