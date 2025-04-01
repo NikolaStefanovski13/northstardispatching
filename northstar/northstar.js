@@ -1620,3 +1620,77 @@ if (validationResult.valid) {
         submitButton.disabled = false;
     }
 }
+
+
+//TESTING 
+
+// Add to your northstar.js file
+function addTestScenarios() {
+    const simulationMode = document.getElementById('simulationMode');
+    if (!simulationMode || !simulationMode.checked) return;
+    
+    // Add pre-defined test routes with obstacles
+    const testRoutes = [
+      {
+        name: "Low Bridge Test Route",
+        pickup: "101 Main St, Norfolk, VA",
+        delivery: "250 West St, Norfolk, VA",
+        description: "Route with an 11'8\" bridge (truck height: 13'6\")"
+      },
+      {
+        name: "Weight Restricted Test Route",
+        pickup: "123 Pine St, Pittsburgh, PA",
+        delivery: "450 Oak Ave, Pittsburgh, PA",
+        description: "Route with a 15-ton bridge (truck weight: 40 tons)"
+      },
+      {
+        name: "Weigh Station Test Route",
+        pickup: "500 Interstate Dr, Dallas, TX",
+        delivery: "1200 Highway Rd, Austin, TX",
+        description: "Route with 2 weigh stations (with automated alerts)"
+      }
+    ];
+  
+    // Create test route selector dropdown
+    const routeForm = document.getElementById('routeForm');
+    if (routeForm) {
+      const testContainer = document.createElement('div');
+      testContainer.className = 'mt-4 p-4 bg-yellow-50 rounded-md';
+      testContainer.innerHTML = `
+        <h3 class="font-medium text-yellow-800 mb-2">Test Scenarios</h3>
+        <select id="testScenario" class="w-full p-2 border rounded mb-2">
+          <option value="">-- Select a test scenario --</option>
+          ${testRoutes.map((route, i) => 
+            `<option value="${i}">${route.name}</option>`
+          ).join('')}
+        </select>
+        <p id="scenarioDescription" class="text-sm text-yellow-700"></p>
+      `;
+      
+      // Insert before the submit button
+      const submitButton = routeForm.querySelector('button[type="submit"]');
+      routeForm.insertBefore(testContainer, submitButton.parentNode);
+      
+      // Add event listener for selection
+      document.getElementById('testScenario').addEventListener('change', function() {
+        const index = this.value;
+        if (index !== "") {
+          const route = testRoutes[index];
+          document.getElementById('routeName').value = route.name;
+          document.getElementById('pickupLocation').value = route.pickup;
+          document.getElementById('deliveryLocation').value = route.delivery;
+          document.getElementById('scenarioDescription').textContent = route.description;
+        }
+      });
+    }
+  }
+  
+  // Call this function when simulation mode is toggled
+  document.addEventListener('DOMContentLoaded', function() {
+    const simulationMode = document.getElementById('simulationMode');
+    if (simulationMode) {
+      simulationMode.addEventListener('change', addTestScenarios);
+    }
+  });
+
+  

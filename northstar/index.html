@@ -68,6 +68,14 @@
             
             <form id="routeForm" class="space-y-6">
                 <!-- Route Name -->
+                 <!-- Add this to your index.html form section -->
+<div class="mt-6 p-4 bg-blue-50 rounded-md">
+    <div class="flex items-center mb-2">
+      <input type="checkbox" id="simulationMode" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+      <label for="simulationMode" class="ml-2 font-medium text-blue-800">Enable Test Mode</label>
+    </div>
+    <p class="text-sm text-blue-600">Activates simulation features for testing truck-specific routing without a real truck.</p>
+  </div>
                 <div>
                     <label for="routeName" class="block text-sm font-medium text-gray-700 mb-1">Route Name</label>
                     <input type="text" id="routeName" name="routeName" 
