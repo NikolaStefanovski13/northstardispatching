@@ -518,7 +518,25 @@ switch ($action) {
         break;
 
     case 'getAllRoutes':
+        $page = max(1, intval($_GET['page'] ?? 1));
+        $limit = max(10, min(100, intval($_GET['limit'] ?? 20)));
+        $offset = ($page - 1) * $limit;
+
+        $result = $db->query("
+            SELECT r.id, r.token, r.name, r.pickup_address, r.delivery_address, 
+                   r.status, r.created_at, r.driver_id, d.name as driver_name,
+                   d.initials as driver_initials
+            FROM routes r
+            LEFT JOIN drivers d ON r.driver_id = d.id
+            ORDER BY r.created_at DESC
+            LIMIT $limit OFFSET $offset
+        ");
         # This returns a list of all routes (for dispatcher dashboard)
+
+
+
+
+
 
         # Query database for all routes, ordered by creation date
         $result = $db->query('
@@ -873,6 +891,33 @@ switch ($action) {
         break;
 
     case 'getAllDrivers':
+        $page = max(1, intval($_GET['page'] ?? 1));
+        $limit = max(10, min(100, intval($_GET['limit'] ?? 20)));
+        $offset = ($page - 1) * $limit;
+        $statusFilter = $_GET['status'] ?? '';
+
+        $sql = "SELECT * FROM drivers";
+        $params = [];
+
+        if (!empty($statusFilter)) {
+            $sql .= " WHERE status = :status";
+            $params[':status'] = $statusFilter;
+        }
+
+        $sql .= " ORDER BY name ASC LIMIT $limit OFFSET $offset";
+
+        // ... rest of existing code ...
+
+        echo json_encode([
+            'success' => true,
+            'drivers' => $drivers,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $db->querySingle("SELECT COUNT(*) FROM drivers" . ($statusFilter ? " WHERE status = '$statusFilter'" : ""))
+            ]
+        ]);
+        break;
         # This returns a list of all drivers
 
         # Optional filter by status
@@ -1253,7 +1298,27 @@ switch ($action) {
             'activities' => $activities
         ]);
         break;
+    case 'cleanup':
+        // Auth check (only allow from CLI or with admin key)
+        if (php_sapi_name() !== 'cli' && ($_GET['key'] ?? '') !== 'YOUR_SECRET_CLEANUP_KEY') {
+            http_response_code(403);
+            die(json_encode(['error' => 'Unauthorized']));
+        }
 
+        $daysToKeep = 30;
+        $timestamp = date('Y-m-d H:i:s', strtotime("-$daysToKeep days"));
+
+        // Delete old routes and cascade to positions/activities
+        $db->exec("DELETE FROM routes WHERE created_at < '$timestamp'");
+
+        // Orphaned positions (no route/driver)
+        $db->exec("DELETE FROM positions WHERE route_id NOT IN (SELECT id FROM routes) AND driver_id NOT IN (SELECT id FROM drivers)");
+
+        // Orphaned activities
+        $db->exec("DELETE FROM activities WHERE route_id NOT IN (SELECT id FROM routes) AND driver_id NOT IN (SELECT id FROM drivers)");
+
+        echo json_encode(['success' => true, 'deleted' => $db->changes()]);
+        break;
     default:
         # Handle invalid API action
         http_response_code(400);
