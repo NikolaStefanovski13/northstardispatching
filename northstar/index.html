@@ -76,6 +76,25 @@
     </div>
     <p class="text-sm text-blue-600">Activates simulation features for testing truck-specific routing without a real truck.</p>
   </div>
+  <!-- Add this to your form section in index.html -->
+<div class="mb-4 border-t border-gray-200 pt-4 mt-4">
+    <h3 class="text-lg font-medium mb-3">Advanced Routing Options</h3>
+    
+    <div class="flex items-center mb-2">
+      <input type="checkbox" id="avoidWeighStations" name="avoidWeighStations" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+      <label for="avoidWeighStations" class="ml-2">Avoid weigh stations when possible</label>
+    </div>
+    
+    <div class="flex items-center mb-2">
+      <input type="checkbox" id="showWeighStations" name="showWeighStations" class="h-4 w-4 text-blue-600 focus:ring-blue-500" checked>
+      <label for="showWeighStations" class="ml-2">Show weigh stations on route</label>
+    </div>
+    
+    <div class="flex items-center">
+      <input type="checkbox" id="weighStationAlerts" name="weighStationAlerts" class="h-4 w-4 text-blue-600 focus:ring-blue-500" checked>
+      <label for="weighStationAlerts" class="ml-2">Receive voice alerts for upcoming weigh stations</label>
+    </div>
+  </div>
                 <div>
                     <label for="routeName" class="block text-sm font-medium text-gray-700 mb-1">Route Name</label>
                     <input type="text" id="routeName" name="routeName" 
