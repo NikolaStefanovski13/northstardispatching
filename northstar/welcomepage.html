@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NorthStar - The Ultimate Truck Navigation System</title>
@@ -137,31 +138,53 @@
 </head>
 <body class="min-h-screen bg-gray-50">
     <!-- Fixed Navigation -->
-    <nav class="fixed-nav py-4 w-full">
-        <div class="container mx-auto px-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                    <svg class="h-10 w-10 mr-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
-                    </svg>
-                    <h1 class="text-3xl font-bold">NorthStar</h1>
-                </div>
-                
-                <div class="hidden md:flex items-center space-x-6">
-                    <a href="#features" class="text-white hover:text-blue-200 transition-colors font-medium">Features</a>
-                    <a href="#how-it-works" class="text-white hover:text-blue-200 transition-colors font-medium">How It Works</a>
-                    <a href="#testimonials" class="text-white hover:text-blue-200 transition-colors font-medium">Testimonials</a>
-                    <a href="#pricing" class="text-white hover:text-blue-200 transition-colors font-medium">Pricing</a>
-                    <a href="dashboard.html" class="text-white hover:text-blue-200 transition-colors font-medium">Dashboard</a>
-                </div>
-                
-                <div class="flex items-center space-x-4">
-                    <a href="login.html" class="px-4 py-2 rounded-md border border-white text-white hover:bg-white hover:text-[oklch(0.282_0.091_267.935)] transition-colors">Log In</a>
-                    <a href="signup.html" class="px-4 py-2 bg-white text-[oklch(0.282_0.091_267.935)] rounded-md hover:bg-blue-50 transition-colors font-medium">Sign Up Free</a>
-                </div>
+   <!-- Mobile-friendly navigation -->
+<nav class="fixed-nav py-4 w-full">
+    <div class="container mx-auto px-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <svg class="h-10 w-10 mr-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
+                </svg>
+                <h1 class="text-3xl font-bold">NorthStar</h1>
+            </div>
+            
+            <!-- Desktop menu -->
+            <div class="hidden md:flex items-center space-x-6 desktop-menu">
+                <a href="#features" class="text-white hover:text-blue-200 transition-colors font-medium">Features</a>
+                <a href="#how-it-works" class="text-white hover:text-blue-200 transition-colors font-medium">How It Works</a>
+                <a href="#testimonials" class="text-white hover:text-blue-200 transition-colors font-medium">Testimonials</a>
+                <a href="#pricing" class="text-white hover:text-blue-200 transition-colors font-medium">Pricing</a>
+                <a href="dashboard.html" class="text-white hover:text-blue-200 transition-colors font-medium">Dashboard</a>
+            </div>
+            
+            <!-- Mobile menu toggle -->
+            <button class="md:hidden text-white mobile-menu-toggle">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            
+            <div class="hidden md:flex items-center space-x-4">
+                <a href="login.html" class="px-4 py-2 rounded-md border border-white text-white hover:bg-white hover:text-[oklch(0.282_0.091_267.935)] transition-colors">Log In</a>
+                <a href="signup.html" class="px-4 py-2 bg-white text-[oklch(0.282_0.091_267.935)] rounded-md hover:bg-blue-50 transition-colors font-medium">Sign Up Free</a>
             </div>
         </div>
-    </nav>
+        
+        <!-- Mobile menu dropdown (hidden by default) -->
+        <div class="mobile-menu md:hidden">
+            <a href="#features" class="text-white hover:bg-[oklch(0.3_0.091_267.935)] transition-colors font-medium">Features</a>
+            <a href="#how-it-works" class="text-white hover:bg-[oklch(0.3_0.091_267.935)] transition-colors font-medium">How It Works</a>
+            <a href="#testimonials" class="text-white hover:bg-[oklch(0.3_0.091_267.935)] transition-colors font-medium">Testimonials</a>
+            <a href="#pricing" class="text-white hover:bg-[oklch(0.3_0.091_267.935)] transition-colors font-medium">Pricing</a>
+            <a href="dashboard.html" class="text-white hover:bg-[oklch(0.3_0.091_267.935)] transition-colors font-medium">Dashboard</a>
+            <div class="flex flex-col space-y-2 mt-4 pt-4 border-t border-white border-opacity-20">
+                <a href="login.html" class="px-4 py-2 rounded-md border border-white text-white hover:bg-white hover:text-[oklch(0.282_0.091_267.935)] transition-colors text-center">Log In</a>
+                <a href="signup.html" class="px-4 py-2 bg-white text-[oklch(0.282_0.091_267.935)] rounded-md hover:bg-blue-50 transition-colors font-medium text-center">Sign Up Free</a>
+            </div>
+        </div>
+    </div>
+</nav>
     
     <!-- Hero Section with Video Background -->
     <section class="hero-section">
@@ -330,5 +353,106 @@
             });
         });
     </script>
+    <style>
+        /* Existing styles remain... */
+        
+        /* Mobile-specific adjustments */
+        @media (max-width: 768px) {
+            .hero-section {
+                padding: 80px 0;
+            }
+            
+            .hero-section h2 {
+                font-size: 2.5rem;
+                line-height: 1.2;
+            }
+            
+            .hero-section p {
+                font-size: 1.1rem;
+            }
+            
+            .video-container video {
+                height: 100%;
+                width: auto;
+                min-width: unset;
+                min-height: 100%;
+            }
+            
+            /* Better spacing for mobile action buttons */
+            .hero-section .flex {
+                gap: 12px;
+            }
+            
+            /* Mobile menu improvements */
+            .mobile-menu-button {
+                display: block;
+            }
+            
+            /* Adjust stats grid for mobile */
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            /* Adjust step cards for mobile flow */
+            .step-card::after {
+                display: none;
+            }
+            
+            /* Turn horizontal steps into vertical on mobile */
+            .steps-container {
+                flex-direction: column;
+            }
+            
+            /* Adjust padding and font sizes for mobile comfort */
+            section {
+                padding: 60px 16px;
+            }
+            
+            h2 {
+                font-size: 2rem;
+            }
+            
+            /* Mobile-friendly navigation when scrolled */
+            .fixed-nav.scrolled {
+                padding: 8px 0;
+            }
+            
+            /* Mobile menu toggle button */
+            .mobile-menu-toggle {
+                display: block;
+            }
+            
+            .desktop-menu {
+                display: none;
+            }
+            
+            /* Mobile menu dropdown styling */
+            .mobile-menu {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background-color: oklch(0.282 0.091 267.935);
+                padding: 16px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                display: none;
+            }
+            
+            .mobile-menu.active {
+                display: block;
+            }
+            
+            .mobile-menu a {
+                display: block;
+                padding: 12px 16px;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+            
+            .mobile-menu a:last-child {
+                border-bottom: none;
+            }
+        }
+    </style>
 </body>
 </html>
