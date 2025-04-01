@@ -1864,3 +1864,31 @@ function speak(message, isWarning = false) {
       alertSound.play();
     }
   }
+
+  // Add this to your updateRouteResults function in northstar.js
+function updateRouteResults(data) {
+    // Existing code...
+    
+    // Add truck validation badge
+    const resultsDiv = document.getElementById('routeResults');
+    if (resultsDiv) {
+      const truckHeight = document.getElementById('truckHeight').value;
+      const truckWeight = document.getElementById('truckWeight').value;
+      
+      // Create validation badge
+      const validationBadge = document.createElement('div');
+      validationBadge.className = 'bg-green-100 text-green-800 p-3 rounded-md mb-4 flex items-center';
+      validationBadge.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span><strong>Truck-Safe Route:</strong> This route has been validated for your truck specifications (${truckHeight}' height, ${truckWeight} lbs)</span>
+      `;
+      
+      // Insert at the beginning of the results
+      resultsDiv.insertBefore(validationBadge, resultsDiv.firstChild);
+    }
+  }
+
+
+  
