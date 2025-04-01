@@ -1816,4 +1816,45 @@ function displayRoute(routeData) {
     ];
   }
 
-  
+  //voice alert
+  // Enhance the speak function in northstar.js
+function speak(message, isWarning = false) {
+    if (!voiceEnabled || !('speechSynthesis' in window)) return;
+    
+    debug('Speaking message:', message);
+    
+    // Cancel any current speech
+    window.speechSynthesis.cancel();
+    
+    // Create new speech synthesis utterance
+    const utterance = new SpeechSynthesisUtterance(message);
+    
+    // Set voice properties
+    utterance.volume = 1;
+    utterance.rate = isWarning ? 0.9 : 1; // Slightly slower for warnings
+    utterance.pitch = isWarning ? 1.2 : 1; // Slightly higher pitch for warnings
+    
+    // Try to find a voice
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      // Prefer a male voice for regular guidance and female for warnings
+      let voice;
+      
+      if (isWarning) {
+        voice = voices.find(v => v.name.includes('Female') && v.lang.startsWith('en-'));
+      } else {
+        voice = voices.find(v => v.name.includes('Male') && v.lang.startsWith('en-'));
+      }
+      
+      if (voice) utterance.voice = voice;
+    }
+    
+    // Speak the message
+    window.speechSynthesis.speak(utterance);
+    
+    // For warnings, also play an alert sound
+    if (isWarning) {
+      const alertSound = new Audio('data:audio/mp3;base64,SUQzAwAAAAAAI1RJVDIAAAAZAAAAaHR0cDovL3d3dy5mcmVlc2Z4LmNvLnVrAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQYAAAA4Rh/fPKAQAAAP8AAAABGEVH+c8oBAAAA/wAAAABkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABF1LQo0zVCeHJVZU9vYm9keSBTdGFuZHMgaW4gdGhlIFdheSAobm8gb25lKQ==');
+      alertSound.play();
+    }
+  }
