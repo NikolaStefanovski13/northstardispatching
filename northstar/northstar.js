@@ -1693,4 +1693,127 @@ function addTestScenarios() {
     }
   });
 
+
+  // Add to displayRoute function in northstar.js
+function displayRoute(routeData) {
+    // Existing code...
+    
+    // Check for simulation mode
+    const simulationMode = document.getElementById('simulationMode');
+    if (simulationMode && simulationMode.checked) {
+      // Add simulated hazards based on route
+      addSimulatedHazards(routeData);
+    }
+  }
+  
+  function addSimulatedHazards(routeData) {
+    if (!map || !routeLayer) return;
+    
+    // Calculate points along the route for hazards
+    let routeCoordinates = [];
+    if (routeData.geometry && routeData.geometry.coordinates) {
+      routeCoordinates = routeData.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+    } else {
+      // Simple straight line if no geometry
+      routeCoordinates = [
+        [routeData.pickup.lat, routeData.pickup.lon],
+        [routeData.delivery.lat, routeData.delivery.lon]
+      ];
+    }
+    
+    // Place hazards at specific points
+    const hazards = [
+      {
+        type: "lowBridge",
+        position: calculatePointOnRoute(routeCoordinates, 0.3), // 30% along route
+        clearance: "11' 8\"",
+        truckHeight: "13' 6\"",
+        message: "LOW BRIDGE AHEAD! Clearance: 11'8\" (Your truck: 13'6\")"
+      },
+      {
+        type: "weightLimit",
+        position: calculatePointOnRoute(routeCoordinates, 0.6), // 60% along route
+        limit: "15 tons",
+        truckWeight: "40 tons",
+        message: "WEIGHT LIMIT BRIDGE: 15 tons (Your truck: 40 tons)"
+      },
+      {
+        type: "weighStation",
+        position: calculatePointOnRoute(routeCoordinates, 0.7), // 70% along route
+        status: "Open",
+        message: "WEIGH STATION AHEAD: Currently OPEN"
+      }
+    ];
+    
+    // Add hazard markers to the map
+    hazards.forEach(hazard => {
+      let icon;
+      let color;
+      
+      switch(hazard.type) {
+        case "lowBridge":
+          icon = 'bridge';
+          color = '#ef4444'; // red
+          break;
+        case "weightLimit": 
+          icon = 'scale';
+          color = '#f59e0b'; // amber
+          break;
+        case "weighStation":
+          icon = 'building';
+          color = '#3b82f6'; // blue
+          break;
+      }
+      
+      // Create a custom icon with SVG
+      const customIcon = L.divIcon({
+        html: `<div style="background-color: ${color}; color: white; padding: 5px; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                   <path fill-rule="evenodd" d="M4 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm2 1h8v7H6V6z" clip-rule="evenodd" />
+                 </svg>
+               </div>`,
+        className: '',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+      
+      // Add marker with popup
+      const marker = L.marker(hazard.position, { icon: customIcon }).addTo(routeLayer);
+      marker.bindPopup(`<div class="p-2">
+                          <h3 class="font-bold text-lg" style="color: ${color};">${hazard.message}</h3>
+                          <p class="text-sm mt-1">Tap to get details and rerouting options</p>
+                        </div>`);
+      
+      // Automatically show popup after a delay (for testing)
+      setTimeout(() => {
+        marker.openPopup();
+        
+        // If voice guidance is enabled, announce the hazard
+        if (voiceEnabled) {
+          speak(hazard.message);
+        }
+      }, 3000);
+    });
+  }
+  
+  // Helper function to calculate a point along a route
+  function calculatePointOnRoute(coordinates, ratio) {
+    if (coordinates.length < 2) return null;
+    
+    const totalSegments = coordinates.length - 1;
+    const targetSegmentIndex = Math.floor(ratio * totalSegments);
+    
+    // Get the target segment
+    const start = coordinates[targetSegmentIndex];
+    const end = coordinates[targetSegmentIndex + 1];
+    
+    // Calculate position along this segment
+    const segmentRatio = (ratio * totalSegments) - targetSegmentIndex;
+    
+    return [
+      start[0] + segmentRatio * (end[0] - start[0]),
+      start[1] + segmentRatio * (end[1] - start[1])
+    ];
+  }
+
   
