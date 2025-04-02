@@ -1,18 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NorthStar - Route Planner</title>
+    <title>NorthStar - The Ultimate Truck Navigation System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
     <style>
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            scroll-behavior: smooth;
         }
-        .northstar-header {
-            background: linear-gradient(to right, #2563eb, #1d4ed8);
-            color: white;
+        :root {
+            --brand-color: oklch(0.282 0.091 267.935);
+            --brand-color-light: oklch(0.5 0.091 267.935);
+            --brand-color-dark: oklch(0.2 0.091 267.935);
+        }
+        .brand-bg {
+            background-color: var(--brand-color);
+        }
+        .brand-text {
+            color: var(--brand-color);
+        }
+        .brand-border {
+            border-color: var(--brand-color);
+        }
+        .brand-bg-light {
+            background-color: var(--brand-color-light);
+        }
+        .brand-bg-dark {
+            background-color: var(--brand-color-dark);
         }
         .northstar-btn {
             transition: all 0.2s ease;
@@ -21,250 +39,456 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        /* Add to your style section in HTML */
-@keyframes pulse {
-    0% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
-    }
-    
-    70% {
-        transform: scale(1);
-        box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
-    }
-    
-    100% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
-    }
-}
-
-.pulse-animation {
-    animation: pulse 2s infinite;
-}
-
-.truck-icon {
-    animation: truck-movement 1s infinite alternate;
-}
-
-@keyframes truck-movement {
-    from { transform: translateY(0px); }
-    to { transform: translateY(-3px); }
-}
-
-.animate-pulse {
-    animation: pulse-opacity 2s infinite;
-}
-
-@keyframes pulse-opacity {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-.route-highlight {
-    stroke-dasharray: 10;
-    animation: dash 1s linear infinite;
-}
-
-@keyframes dash {
-    to {
-        stroke-dashoffset: 20;
-    }
-}
+        .video-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+        .video-container video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            transform: translateX(-50%) translateY(-50%);
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, rgba(40, 28, 60, 0.6), rgba(40, 28, 60, 0.6));
+        }
+        .hero-section {
+            position: relative;
+            color: white;
+            padding: 120px 0;
+            overflow: hidden;
+            min-height: 100vh;
+        }
+        .feature-card {
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .step-card {
+            position: relative;
+        }
+        .step-card::after {
+            content: "";
+            position: absolute;
+            top: 40px;
+            right: -16px;
+            width: 32px;
+            height: 3px;
+            background-color: var(--brand-color);
+            display: none;
+        }
+        @media (min-width: 768px) {
+            .step-card::after {
+                display: block;
+            }
+            .step-card:last-child::after {
+                display: none;
+            }
+        }
+        .testimonial-card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+        .testimonial-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .pricing-card {
+            transition: all 0.3s ease;
+        }
+        .pricing-card:hover {
+            transform: scale(1.02);
+        }
+        .pricing-card.featured {
+            transform: scale(1.05);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .pricing-card.featured:hover {
+            transform: scale(1.07);
+        }
+        .fixed-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background-color: transparent;
+            transition: background-color 0.3s ease;
+        }
+        .fixed-nav.scrolled {
+            background-color: oklch(0.282 0.091 267.935);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body class="min-h-screen bg-gray-50">
-    <header class="northstar-header p-4 shadow-md">
-        <div class="container mx-auto flex items-center justify-between">
+    <!-- Fixed Navigation -->
+   <!-- Mobile-friendly navigation -->
+<nav class="fixed-nav py-4 w-full">
+    <div class="container mx-auto px-4">
+        <div class="flex items-center justify-between">
             <div class="flex items-center">
-                <svg class="h-8 w-8 mr-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg class="h-10 w-10 mr-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
                 </svg>
-                <h1 class="text-2xl font-bold">NorthStar</h1>
+                <h1 class="text-3xl font-bold">NorthStar</h1>
             </div>
-            <div class="flex items-center">
-                <nav class="hidden md:flex items-center space-x-4">
-                    <a href="index.html" class="text-white hover:text-blue-100 font-medium">Create Route</a>
-                    <a href="dashboard.html" class="text-white hover:text-blue-100 font-medium">Dashboard</a>
-                    <a href="drivers.html" class="text-white hover:text-blue-100 font-medium">Manage Drivers</a>
-                    <a href="tracking.html" class="text-white hover:text-blue-100 font-medium">Live Tracking</a>
-                    <a href="reports.html" class="text-white hover:text-blue-100 font-medium">Reports</a>
-                </nav>
-                <!-- Mobile menu button -->
-                <button class="md:hidden text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-        <!-- Mobile menu (hidden by default) -->
-        <div class="md:hidden hidden" id="mobileMenu">
-            <div class="px-2 pt-2 pb-3 space-y-1">
-                <a href="index.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Create Route</a>
-                <a href="dashboard.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Dashboard</a>
-                <a href="drivers.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Manage Drivers</a>
-                <a href="tracking.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Live Tracking</a>
-                <a href="reports.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Reports</a>
-            </div>
-        </div>
-    </header>
-
-    <!-- Rest of the content remains the same -->
-
-    <main class="container mx-auto p-4 my-8">
-        <div class="bg-white rounded-lg shadow-md p-6 max-w-4xl mx-auto">
-            <h2 class="text-xl font-semibold mb-6">Create New Route</h2>
             
-            <form id="routeForm" class="space-y-6">
-                <!-- Route Name -->
-                 <!-- Add this to your index.html form section -->
-<div class="mt-6 p-4 bg-blue-50 rounded-md">
-    <div class="flex items-center mb-2">
-      <input type="checkbox" id="simulationMode" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
-      <label for="simulationMode" class="ml-2 font-medium text-blue-800">Enable Test Mode</label>
-    </div>
-    <p class="text-sm text-blue-600">Activates simulation features for testing truck-specific routing without a real truck.</p>
-  </div>
-  <!-- Add this to your form section in index.html -->
-<div class="mb-4 border-t border-gray-200 pt-4 mt-4">
-    <h3 class="text-lg font-medium mb-3">Advanced Routing Options</h3>
-    
-    <div class="flex items-center mb-2">
-      <input type="checkbox" id="avoidWeighStations" name="avoidWeighStations" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
-      <label for="avoidWeighStations" class="ml-2">Avoid weigh stations when possible</label>
-    </div>
-    
-    <div class="flex items-center mb-2">
-      <input type="checkbox" id="showWeighStations" name="showWeighStations" class="h-4 w-4 text-blue-600 focus:ring-blue-500" checked>
-      <label for="showWeighStations" class="ml-2">Show weigh stations on route</label>
-    </div>
-    
-    <div class="flex items-center">
-      <input type="checkbox" id="weighStationAlerts" name="weighStationAlerts" class="h-4 w-4 text-blue-600 focus:ring-blue-500" checked>
-      <label for="weighStationAlerts" class="ml-2">Receive voice alerts for upcoming weigh stations</label>
-    </div>
-  </div>
-                <div>
-                    <label for="routeName" class="block text-sm font-medium text-gray-700 mb-1">Route Name</label>
-                    <input type="text" id="routeName" name="routeName" 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
-                           placeholder="Chicago to Detroit">
-                </div>
-                
-                <!-- Pickup Location -->
-                <div>
-                    <label for="pickupLocation" class="block text-sm font-medium text-gray-700 mb-1">Pickup Location</label>
-                    <input type="text" id="pickupLocation" name="pickupLocation" 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
-                           placeholder="123 Main St, Chicago, IL">
-                </div>
-                
-                <!-- Delivery Location -->
-                <div>
-                    <label for="deliveryLocation" class="block text-sm font-medium text-gray-700 mb-1">Delivery Location</label>
-                    <input type="text" id="deliveryLocation" name="deliveryLocation" 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
-                           placeholder="456 Elm St, Detroit, MI">
-                </div>
-                
-              
-                
-                <!-- Notes for Driver -->
-                <div>
-                    <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes for Driver</label>
-                    <textarea id="notes" name="notes" rows="3" 
-                              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
-                              placeholder="Special instructions, access codes, or other information..."></textarea>
-                </div>
-                <!-- Add these just before the Submit button -->
-<div class="mb-4">
-    <label class="block text-gray-700 font-medium mb-2">Truck Height (feet)</label>
-    <input type="number" id="truckHeight" name="truckHeight" class="w-full px-3 py-2 border rounded-md" step="0.1" value="13.6">
-    <span class="text-sm text-gray-500">Standard semi is 13'6" (13.6 feet)</span>
-</div>
-
-<div class="mb-4">
-    <label class="block text-gray-700 font-medium mb-2">Truck Weight (lbs)</label>
-    <input type="number" id="truckWeight" name="truckWeight" class="w-full px-3 py-2 border rounded-md" step="1000" value="80000">
-    <span class="text-sm text-gray-500">Maximum legal weight is 80,000 lbs</span>
-</div>
-                <!-- Submit Button -->
-                <div>
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-md shadow-sm northstar-btn">
-                        Create Route
-                    </button>
-                </div>
-            </form>
+            <!-- Desktop menu -->
+            <div class="hidden md:flex items-center space-x-6 desktop-menu">
+                <a href="#features" class="text-white hover:text-blue-200 transition-colors font-medium">Features</a>
+                <a href="#how-it-works" class="text-white hover:text-blue-200 transition-colors font-medium">How It Works</a>
+                <a href="#testimonials" class="text-white hover:text-blue-200 transition-colors font-medium">Testimonials</a>
+                <a href="#pricing" class="text-white hover:text-blue-200 transition-colors font-medium">Pricing</a>
+                <a href="dashboard.html" class="text-white hover:text-blue-200 transition-colors font-medium">Dashboard</a>
+            </div>
             
-            <!-- Results will show here after form submission -->
-            <div id="routeResults" class="mt-8 hidden">
-                <div class="border-t border-gray-200 pt-6">
-                    <h3 class="text-lg font-semibold mb-4">Route Created Successfully</h3>
-                    
-                    <div class="bg-gray-50 p-4 rounded-md mb-4">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700">Share with Driver:</span>
-                            <button id="copyLink" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Copy Link</button>
-                        </div>
-                        <input type="text" id="shareLink" readonly 
-                               class="w-full px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-500">
-                    </div>
-                    
-                    <div class="mt-4">
-                        <h4 class="text-md font-medium mb-2">Route Details:</h4>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <p class="text-sm text-gray-600">Estimated Distance:</p>
-                                <p class="font-medium" id="routeDistance"></p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Estimated Time:</p>
-                                <p class="font-medium" id="routeTime"></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Mobile menu toggle -->
+            <button class="md:hidden text-white mobile-menu-toggle">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            
+            <div class="hidden md:flex items-center space-x-4">
+                <a href="login.html" class="px-4 py-2 rounded-md border border-white text-white hover:bg-white hover:text-[oklch(0.282_0.091_267.935)] transition-colors">Log In</a>
+                <a href="index.html" class="px-4 py-2 bg-white text-[oklch(0.282_0.091_267.935)] rounded-md hover:bg-blue-50 transition-colors font-medium">Use for Free</a>
             </div>
         </div>
-
-
-        <div>
-            <label for="driverSelect" class="block text-sm font-medium text-gray-700 mb-1">Assign Driver (Optional)</label>
-            <select id="driverSelect" name="driverSelect" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                <option value="">-- Select a driver --</option>
-                <!-- Drivers will be populated here by JavaScript -->
-            </select>
+        
+        <!-- Mobile menu dropdown (hidden by default) -->
+        <div class="mobile-menu md:hidden">
+            <a href="#features" class="text-white hover:bg-[oklch(0.3_0.091_267.935)] transition-colors font-medium">Features</a>
+            <a href="#how-it-works" class="text-white hover:bg-[oklch(0.3_0.091_267.935)] transition-colors font-medium">How It Works</a>
+            <a href="#testimonials" class="text-white hover:bg-[oklch(0.3_0.091_267.935)] transition-colors font-medium">Testimonials</a>
+            <a href="#pricing" class="text-white hover:bg-[oklch(0.3_0.091_267.935)] transition-colors font-medium">Pricing</a>
+            <a href="dashboard.html" class="text-white hover:bg-[oklch(0.3_0.091_267.935)] transition-colors font-medium">Dashboard</a>
+            <div class="flex flex-col space-y-2 mt-4 pt-4 border-t border-white border-opacity-20">
+                <a href="login.html" class="px-4 py-2 rounded-md border border-white text-white hover:bg-white hover:text-[oklch(0.282_0.091_267.935)] transition-colors text-center">Log In</a>
+                <a href="index.html" class="px-4 py-2 bg-white text-[oklch(0.282_0.091_267.935)] rounded-md hover:bg-blue-50 transition-colors font-medium text-center">Use for Free</a>
+            </div>
         </div>
-
-        <!-- Add this somewhere in your driver.html for debugging -->
-<div id="debug" style="position: fixed; bottom: 0; right: 0; background: white; padding: 10px; border: 1px solid black; display: none;">
-    <h3>Debug Info</h3>
-    <pre id="debugInfo"></pre>
-    <button onclick="document.getElementById('debug').style.display = 'none'">Close</button>
-</div>
-
-    </main>
-
-    <footer class="bg-gray-800 text-white p-6 mt-auto">
-        <div class="container mx-auto">
-            <div class="flex flex-col md:flex-row justify-between items-center">
-                <div class="mb-4 md:mb-0">
-                    <div class="flex items-center">
-                        <svg class="h-6 w-6 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
+    </div>
+</nav>
+    
+    <!-- Hero Section with Video Background -->
+    <section class="hero-section">
+        <div class="video-container">
+            <video autoplay muted loop playsinline>
+                <source src="/northstar/media assets/18083-288452975_small.mp4" type="video/mp4">
+                <!-- Fallback image if video doesn't load -->
+                <img src="/northstar/media assets/truck-2677373.jpg" alt="Truck on highway">
+            </video>
+            <div class="overlay"></div>
+        </div>
+        
+        <div class="container mx-auto px-4 relative z-10 pt-16">
+            <!-- Hero Content -->
+            <div class="max-w-3xl mt-20 mb-16">
+                <h2 class="text-5xl font-bold leading-tight mb-6">Navigate Smarter, Save Bigger with Truck-Specific Routes</h2>
+                <p class="text-xl mb-8 text-blue-100">NorthStar is the ultimate navigation system designed exclusively for truck drivers and dispatchers. Save on <b>money, time and fuel costs</b> with optimized routes while avoiding weigh station, low bridges and truck restrictions.</p>
+                <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                    <a href="index.html" class="px-8 py-4 bg-white text-[oklch(0.282_0.091_267.935)] rounded-md font-semibold text-lg hover:bg-blue-50 transition-colors text-center northstar-btn">    Start Driving Smarter                    </a>
+                    <a href="#demo-video" class="px-8 py-4 border border-white text-white rounded-md font-semibold text-lg hover:bg-white hover:text-[oklch(0.282_0.091_267.935)] transition-colors flex items-center justify-center northstar-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
                         </svg>
-                        <span class="font-semibold">North Star</span>
-                    </div>
-                    <p class="text-sm text-gray-400 mt-1">The Navigator's Choice</p>
+                        Watch Demo
+                    </a>
                 </div>
-                <div>
-                    <p class="text-sm text-gray-400">&copy; 2025 NorthStar - Project made by Nikola Stefanovski. All rights reserved.</p>
+            </div>
+            
+
+            
+            
+            <!-- Stats Showcase -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 py-8 bg-white bg-opacity-10 rounded-lg backdrop-blur-sm p-4 mb-12">
+                <div class="text-center">
+                    <h3 class="text-4xl font-bold mb-2">20%</h3>
+                    <p class="text-blue-100">Average Fuel Savings</p>
+                </div>
+                <div class="text-center">
+                    <h3 class="text-4xl font-bold mb-2">35%</h3>
+                    <p class="text-blue-100">Faster Route Planning</p>
+                </div>
+                <div class="text-center">
+                    <h3 class="text-4xl font-bold mb-2">100%</h3>
+                    <p class="text-blue-100">Truck-Safe Routes</p>
                 </div>
             </div>
         </div>
-    </footer>
+    </section>
+    
+    <!-- Features Section -->
+    <section id="features" class="py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <h2 class="text-3xl font-bold mb-4">Why Choose NorthStar?</h2>
+                <p class="text-lg text-gray-600">Our platform is specifically designed for the unique needs of trucking companies, offering benefits you won't find in standard navigation apps.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Feature 1: Fuel Efficiency -->
+                <div class="feature-card bg-[oklch(0.95_0.03_267.935)] rounded-xl p-6 shadow-md">
+                    <div class="bg-[oklch(0.9_0.06_267.935)] rounded-full p-4 inline-block mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-[oklch(0.282_0.091_267.935)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Save 20% on Fuel</h3>
+                    <p class="text-gray-700">Our truck-specific routing algorithm optimizes for fuel efficiency, meaning fewer miles driven and less fuel consumed on every trip.</p>
+                </div>
+                
+                <!-- Feature 2: Time Savings -->
+                <div class="feature-card bg-[oklch(0.95_0.03_267.935)] rounded-xl p-6 shadow-md">
+                    <div class="bg-[oklch(0.9_0.06_267.935)] rounded-full p-4 inline-block mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-[oklch(0.282_0.091_267.935)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Reduce Delivery Time</h3>
+                    <p class="text-gray-700">Avoid low bridges, truck restrictions, and unsuitable roads that cause delays and detours, delivering faster with less stress.</p>
+                </div>
+                
+                <!-- Feature 3: Simplicity -->
+                <div class="feature-card bg-[oklch(0.95_0.03_267.935)] rounded-xl p-6 shadow-md">
+                    <div class="bg-[oklch(0.9_0.06_267.935)] rounded-full p-4 inline-block mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-[oklch(0.282_0.091_267.935)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">One Unified Platform</h3>
+                    <p class="text-gray-700">Connect dispatchers and drivers in real-time with a single platform that eliminates miscommunication and streamlines operations.</p>
+                </div>
+                
+                <!-- Feature 4: Compliance -->
+                <div class="feature-card bg-[oklch(0.95_0.03_267.935)] rounded-xl p-6 shadow-md">
+                    <div class="bg-[oklch(0.9_0.06_267.935)] rounded-full p-4 inline-block mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-[oklch(0.282_0.091_267.935)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Stay Compliant</h3>
+                    <p class="text-gray-700">Avoid tickets and delays by staying on truck-approved routes with height, weight, and hazmat restrictions built into navigation.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-20 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <h2 class="text-3xl font-bold mb-4">How NorthStar Works</h2>
+                <p class="text-lg text-gray-600">A seamless experience from dispatch to delivery, designed to make every trip more efficient.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Step 1 -->
+                <div class="step-card bg-white p-6 rounded-xl shadow-md">
+                    <div class="bg-[oklch(0.282_0.091_267.935)] text-white rounded-full w-12 h-12 flex items-center justify-center mb-4 text-xl font-bold">1</div>
+                    <h3 class="text-xl font-semibold mb-2">Create Route</h3>
+                    <p class="text-gray-700 mb-4">Dispatcher enters pickup and delivery locations, along with truck specifications. Our system calculates the optimal truck-friendly route.</p>
+                    <img src="step1-image.jpg" alt="Create Route Interface" class="rounded-lg shadow-sm w-full h-auto">
+                </div>
+                
+                <!-- Step 2 -->
+                <div class="step-card bg-white p-6 rounded-xl shadow-md">
+                    <div class="bg-[oklch(0.282_0.091_267.935)] text-white rounded-full w-12 h-12 flex items-center justify-center mb-4 text-xl font-bold">2</div>
+                    <h3 class="text-xl font-semibold mb-2">Driver Navigation</h3>
+                    <p class="text-gray-700 mb-4">Driver receives a unique link with turn-by-turn navigation optimized for their truck, including voice guidance and night mode.</p>
+                    <img src="step2-image.jpg" alt="Driver Navigation Interface" class="rounded-lg shadow-sm w-full h-auto">
+                </div>
+                
+                <!-- Step 3 -->
+                <div class="step-card bg-white p-6 rounded-xl shadow-md">
+                    <div class="bg-[oklch(0.282_0.091_267.935)] text-white rounded-full w-12 h-12 flex items-center justify-center mb-4 text-xl font-bold">3</div>
+                    <h3 class="text-xl font-semibold mb-2">Real-Time Tracking</h3>
+                    <p class="text-gray-700 mb-4">Dispatchers track progress in real-time, while drivers update status. Upon completion, see detailed analytics on savings and performance.</p>
+                    <img src="step3-image.jpg" alt="Real-Time Tracking Interface" class="rounded-lg shadow-sm w-full h-auto">
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Rest of the page content... -->
 
-    <script src="northstar.js"></script>
+    <!-- JavaScript to handle fixed navigation behavior -->
+    <script>
+        // Add scroll behavior for the fixed navigation
+        window.addEventListener('scroll', function() {
+            const nav = document.querySelector('.fixed-nav');
+            if (window.scrollY > 100) {
+                nav.classList.add('scrolled');
+            } else {
+                nav.classList.remove('scrolled');
+            }
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80, // Offset for the fixed header
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+    </script>
+    <style>
+        /* Existing styles remain... */
+        
+        /* Mobile-specific adjustments */
+        @media (max-width: 768px) {
+            .hero-section {
+                padding: 80px 0;
+            }
+            
+            .hero-section h2 {
+                font-size: 2.5rem;
+                line-height: 1.2;
+            }
+            
+            .hero-section p {
+                font-size: 1.1rem;
+            }
+            
+            .video-container video {
+                height: 100%;
+                width: auto;
+                min-width: unset;
+                min-height: 100%;
+            }
+            
+            /* Better spacing for mobile action buttons */
+            .hero-section .flex {
+                gap: 12px;
+            }
+            
+            /* Mobile menu improvements */
+            .mobile-menu-button {
+                display: block;
+            }
+            
+            /* Adjust stats grid for mobile */
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            /* Adjust step cards for mobile flow */
+            .step-card::after {
+                display: none;
+            }
+            
+            /* Turn horizontal steps into vertical on mobile */
+            .steps-container {
+                flex-direction: column;
+            }
+            
+            /* Adjust padding and font sizes for mobile comfort */
+            section {
+                padding: 60px 16px;
+            }
+            
+            h2 {
+                font-size: 2rem;
+            }
+            
+            /* Mobile-friendly navigation when scrolled */
+            .fixed-nav.scrolled {
+                padding: 8px 0;
+            }
+            
+            /* Mobile menu toggle button */
+            .mobile-menu-toggle {
+                display: block;
+            }
+            
+            .desktop-menu {
+                display: none;
+            }
+            
+            /* Mobile menu dropdown styling */
+            .mobile-menu {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background-color: oklch(0.282 0.091 267.935);
+                padding: 16px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                display: none;
+            }
+            
+            .mobile-menu.active {
+                display: block;
+            }
+            
+            .mobile-menu a {
+                display: block;
+                padding: 12px 16px;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+            
+            .mobile-menu a:last-child {
+                border-bottom: none;
+            }
+        }
+    </style>
+    <style>
+        .pulse-highlight {
+          animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+          }
+        }
+        
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+          0% {
+            transform: translateY(0px) rotate(3deg);
+          }
+          50% {
+            transform: translateY(-15px) rotate(3deg);
+          }
+          100% {
+            transform: translateY(0px) rotate(3deg);
+          }
+        }
+      </style>
 </body>
 </html>
