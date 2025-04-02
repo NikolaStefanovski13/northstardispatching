@@ -1,270 +1,858 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NorthStar - Route Planner</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-    <style>
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NorthStar - Car Carrier Route Planner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'brand-blue': {
+              light: '#3b82f6',
+              DEFAULT: '#2563eb',
+              dark: '#1d4ed8'
+            },
+            'brand-slate': {
+              light: '#f8fafc',
+              DEFAULT: '#f1f5f9',
+              dark: '#e2e8f0'
+            }
+          }
         }
-        .northstar-header {
-            background: linear-gradient(to right, #2563eb, #1d4ed8);
-            color: white;
-        }
-        .northstar-btn {
-            transition: all 0.2s ease;
-        }
-        .northstar-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        /* Add to your style section in HTML */
-@keyframes pulse {
-    0% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+      }
     }
-    
-    70% {
-        transform: scale(1);
-        box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #f1f5f9;
     }
-    
-    100% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+    .northstar-header {
+      background: linear-gradient(to right, #2563eb, #1d4ed8);
+      color: white;
     }
-}
-
-.pulse-animation {
-    animation: pulse 2s infinite;
-}
-
-.truck-icon {
-    animation: truck-movement 1s infinite alternate;
-}
-
-@keyframes truck-movement {
-    from { transform: translateY(0px); }
-    to { transform: translateY(-3px); }
-}
-
-.animate-pulse {
-    animation: pulse-opacity 2s infinite;
-}
-
-@keyframes pulse-opacity {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-.route-highlight {
-    stroke-dasharray: 10;
-    animation: dash 1s linear infinite;
-}
-
-@keyframes dash {
-    to {
-        stroke-dashoffset: 20;
+    .northstar-btn {
+      transition: all 0.2s ease;
     }
-}
-    </style>
+    .northstar-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    .truck-icon {
+      animation: truck-movement 1s infinite alternate;
+    }
+    @keyframes truck-movement {
+      from { transform: translateY(0px); }
+      to { transform: translateY(-3px); }
+    }
+    .capacity-gauge {
+      position: relative;
+      height: 8px;
+      background-color: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .capacity-gauge-fill {
+      height: 100%;
+      background: linear-gradient(to right, #10b981, #3b82f6);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+    #map {
+      height: 400px;
+      z-index: 1;
+    }
+    .stop-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      color: white;
+      font-weight: 600;
+      font-size: 11px;
+    }
+    .pickup-badge {
+      background-color: #10b981;
+    }
+    .delivery-badge {
+      background-color: #ef4444;
+    }
+    .feature-icon {
+      background-color: rgba(37, 99, 235, 0.1);
+      border-radius: 9999px;
+      padding: 0.5rem;
+      color: #2563eb;
+    }
+    .timeline-line {
+      position: absolute;
+      left: 11px;
+      top: 22px;
+      bottom: 0;
+      width: 2px;
+      background-color: #e2e8f0;
+      z-index: 0;
+    }
+    .timeline-item {
+      position: relative;
+      z-index: 1;
+    }
+    .loading-simulator {
+      height: 160px;
+      border: 2px dashed #cbd5e1;
+      background-color: rgba(226, 232, 240, 0.3);
+      border-radius: 0.375rem;
+    }
+  </style>
 </head>
-<body class="min-h-screen bg-gray-50">
-    <header class="northstar-header p-4 shadow-md">
-        <div class="container mx-auto flex items-center justify-between">
-            <div class="flex items-center">
-                <svg class="h-8 w-8 mr-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
-                </svg>
-                <h1 class="text-2xl font-bold">NorthStar</h1>
-            </div>
-            <div class="flex items-center">
-                <nav class="hidden md:flex items-center space-x-4">
-                    <a href="index.html" class="text-white hover:text-blue-100 font-medium">Create Route</a>
-                    <a href="dashboard.html" class="text-white hover:text-blue-100 font-medium">Dashboard</a>
-                    <a href="drivers.html" class="text-white hover:text-blue-100 font-medium">Manage Drivers</a>
-                    <a href="tracking.html" class="text-white hover:text-blue-100 font-medium">Live Tracking</a>
-                    <a href="reports.html" class="text-white hover:text-blue-100 font-medium">Reports</a>
-                </nav>
-                <!-- Mobile menu button -->
-                <button class="md:hidden text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-        <!-- Mobile menu (hidden by default) -->
-        <div class="md:hidden hidden" id="mobileMenu">
-            <div class="px-2 pt-2 pb-3 space-y-1">
-                <a href="index.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Create Route</a>
-                <a href="dashboard.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Dashboard</a>
-                <a href="drivers.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Manage Drivers</a>
-                <a href="tracking.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Live Tracking</a>
-                <a href="reports.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Reports</a>
-            </div>
-        </div>
-    </header>
-
-    <!-- Rest of the content remains the same -->
-
-    <main class="container mx-auto p-4 my-8">
-        <div class="bg-white rounded-lg shadow-md p-6 max-w-4xl mx-auto">
-            <h2 class="text-xl font-semibold mb-6">Create New Route</h2>
-            
-            <form id="routeForm" class="space-y-6">
-                <!-- Route Name -->
-                 <!-- Add this to your index.html form section -->
-<div class="mt-6 p-4 bg-blue-50 rounded-md">
-    <div class="flex items-center mb-2">
-      <input type="checkbox" id="simulationMode" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
-      <label for="simulationMode" class="ml-2 font-medium text-blue-800">Enable Test Mode</label>
+<body class="min-h-screen bg-brand-slate">
+  <header class="northstar-header p-4 shadow-md">
+    <div class="container mx-auto flex items-center justify-between">
+      <div class="flex items-center">
+        <svg class="h-8 w-8 mr-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
+        </svg>
+        <h1 class="text-2xl font-bold">NorthStar</h1>
+      </div>
+      <div class="flex items-center">
+        <nav class="hidden md:flex items-center space-x-6">
+          <a href="index.html" class="text-white hover:text-blue-100 font-medium">Create Route</a>
+          <a href="dashboard.html" class="text-white hover:text-blue-100 font-medium">Dashboard</a>
+          <a href="drivers.html" class="text-white hover:text-blue-100 font-medium">Manage Drivers</a>
+        </nav>
+        <!-- Mobile menu button -->
+        <button class="md:hidden text-white" id="mobileMenuButton">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
     </div>
-    <p class="text-sm text-blue-600">Activates simulation features for testing truck-specific routing without a real truck.</p>
-  </div>
-  <!-- Add this to your form section in index.html -->
-<div class="mb-4 border-t border-gray-200 pt-4 mt-4">
-    <h3 class="text-lg font-medium mb-3">Advanced Routing Options</h3>
-    
-    <div class="flex items-center mb-2">
-      <input type="checkbox" id="avoidWeighStations" name="avoidWeighStations" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
-      <label for="avoidWeighStations" class="ml-2">Avoid weigh stations when possible</label>
+    <!-- Mobile menu (hidden by default) -->
+    <div class="md:hidden hidden" id="mobileMenu">
+      <div class="px-2 pt-2 pb-3 space-y-1">
+        <a href="index.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Create Route</a>
+        <a href="dashboard.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Dashboard</a>
+        <a href="drivers.html" class="block px-3 py-2 text-white font-medium hover:bg-blue-700 rounded-md">Manage Drivers</a>
+      </div>
     </div>
-    
-    <div class="flex items-center mb-2">
-      <input type="checkbox" id="showWeighStations" name="showWeighStations" class="h-4 w-4 text-blue-600 focus:ring-blue-500" checked>
-      <label for="showWeighStations" class="ml-2">Show weigh stations on route</label>
-    </div>
-    
-    <div class="flex items-center">
-      <input type="checkbox" id="weighStationAlerts" name="weighStationAlerts" class="h-4 w-4 text-blue-600 focus:ring-blue-500" checked>
-      <label for="weighStationAlerts" class="ml-2">Receive voice alerts for upcoming weigh stations</label>
-    </div>
-  </div>
-                <div>
-                    <label for="routeName" class="block text-sm font-medium text-gray-700 mb-1">Route Name</label>
-                    <input type="text" id="routeName" name="routeName" 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
-                           placeholder="Chicago to Detroit">
-                </div>
-                
-                <!-- Pickup Location -->
-                <div>
-                    <label for="pickupLocation" class="block text-sm font-medium text-gray-700 mb-1">Pickup Location</label>
-                    <input type="text" id="pickupLocation" name="pickupLocation" 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
-                           placeholder="123 Main St, Chicago, IL">
-                </div>
-                
-                <!-- Delivery Location -->
-                <div>
-                    <label for="deliveryLocation" class="block text-sm font-medium text-gray-700 mb-1">Delivery Location</label>
-                    <input type="text" id="deliveryLocation" name="deliveryLocation" 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
-                           placeholder="456 Elm St, Detroit, MI">
-                </div>
-                
-              
-                
-                <!-- Notes for Driver -->
-                <div>
-                    <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes for Driver</label>
-                    <textarea id="notes" name="notes" rows="3" 
-                              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
-                              placeholder="Special instructions, access codes, or other information..."></textarea>
-                </div>
-                <!-- Add these just before the Submit button -->
-<div class="mb-4">
-    <label class="block text-gray-700 font-medium mb-2">Truck Height (feet)</label>
-    <input type="number" id="truckHeight" name="truckHeight" class="w-full px-3 py-2 border rounded-md" step="0.1" value="13.6">
-    <span class="text-sm text-gray-500">Standard semi is 13'6" (13.6 feet)</span>
-</div>
+  </header>
 
-<div class="mb-4">
-    <label class="block text-gray-700 font-medium mb-2">Truck Weight (lbs)</label>
-    <input type="number" id="truckWeight" name="truckWeight" class="w-full px-3 py-2 border rounded-md" step="1000" value="80000">
-    <span class="text-sm text-gray-500">Maximum legal weight is 80,000 lbs</span>
-</div>
-                <!-- Submit Button -->
-                <div>
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-md shadow-sm northstar-btn">
-                        Create Route
-                    </button>
-                </div>
-            </form>
-            
-            <!-- Results will show here after form submission -->
-            <div id="routeResults" class="mt-8 hidden">
-                <div class="border-t border-gray-200 pt-6">
-                    <h3 class="text-lg font-semibold mb-4">Route Created Successfully</h3>
-                    
-                    <div class="bg-gray-50 p-4 rounded-md mb-4">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700">Share with Driver:</span>
-                            <button id="copyLink" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Copy Link</button>
-                        </div>
-                        <input type="text" id="shareLink" readonly 
-                               class="w-full px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-500">
-                    </div>
-                    
-                    <div class="mt-4">
-                        <h4 class="text-md font-medium mb-2">Route Details:</h4>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <p class="text-sm text-gray-600">Estimated Distance:</p>
-                                <p class="font-medium" id="routeDistance"></p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600">Estimated Time:</p>
-                                <p class="font-medium" id="routeTime"></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <main class="container mx-auto p-4 my-8">
+    <div class="bg-white rounded-lg shadow-sm p-6 max-w-6xl mx-auto">
+      <h2 class="text-xl font-semibold mb-6 text-gray-800">Create Car Carrier Route</h2>
 
-
-        <div>
-            <label for="driverSelect" class="block text-sm font-medium text-gray-700 mb-1">Assign Driver (Optional)</label>
-            <select id="driverSelect" name="driverSelect" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                <option value="">-- Select a driver --</option>
-                <!-- Drivers will be populated here by JavaScript -->
+      <form id="routeForm" class="space-y-8">
+        <!-- Route Basics Section -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="md:col-span-2">
+            <label for="routeName" class="block text-sm font-medium text-gray-700 mb-1">Route Name</label>
+            <input type="text" id="routeName" name="routeName" 
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue" 
+                  placeholder="Chicago to Detroit Route">
+          </div>
+          
+          <div>
+            <label for="driverSelect" class="block text-sm font-medium text-gray-700 mb-1">Assign Driver</label>
+            <select id="driverSelect" name="driverSelect" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue">
+              <option value="">-- Select a driver --</option>
+              <!-- Drivers will be populated here by JavaScript -->
             </select>
+          </div>
         </div>
 
-        <!-- Add this somewhere in your driver.html for debugging -->
-<div id="debug" style="position: fixed; bottom: 0; right: 0; background: white; padding: 10px; border: 1px solid black; display: none;">
-    <h3>Debug Info</h3>
-    <pre id="debugInfo"></pre>
-    <button onclick="document.getElementById('debug').style.display = 'none'">Close</button>
-</div>
-
-    </main>
-
-    <footer class="bg-gray-800 text-white p-6 mt-auto">
-        <div class="container mx-auto">
-            <div class="flex flex-col md:flex-row justify-between items-center">
-                <div class="mb-4 md:mb-0">
-                    <div class="flex items-center">
-                        <svg class="h-6 w-6 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
-                        </svg>
-                        <span class="font-semibold">North Star</span>
-                    </div>
-                    <p class="text-sm text-gray-400 mt-1">The Navigator's Choice</p>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-400">&copy; 2025 NorthStar - Project made by Nikola Stefanovski. All rights reserved.</p>
-                </div>
+        <!-- Carrier Configuration -->
+        <div class="bg-brand-slate-light p-6 rounded-lg border border-brand-slate-dark">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-medium text-gray-800">Car Carrier Configuration</h3>
+            <div class="flex space-x-2">
+              <select id="carrierType" name="carrierType" class="px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue text-sm">
+                <option value="standard">Standard Car Carrier</option>
+                <option value="hotshot">Hotshot Carrier</option>
+                <option value="enclosed">Enclosed Carrier</option>
+                <option value="wedge">Wedge Trailer</option>
+                <option value="custom">Custom Configuration</option>
+              </select>
             </div>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-4">
+            <div>
+              <label for="carrierCapacity" class="block text-sm font-medium text-gray-700 mb-1">Vehicle Capacity</label>
+              <div class="flex">
+                <input type="number" id="carrierCapacity" name="carrierCapacity" value="9" min="1" max="15" 
+                      class="w-full px-4 py-2 border border-gray-300 rounded-l-md focus:ring-brand-blue focus:border-brand-blue">
+                <span class="px-4 py-2 inline-flex items-center border border-l-0 border-gray-300 bg-gray-50 text-gray-500 rounded-r-md">
+                  cars
+                </span>
+              </div>
+            </div>
+            
+            <div>
+              <label for="vehicleHeight" class="block text-sm font-medium text-gray-700 mb-1">Height (feet)</label>
+              <input type="number" id="vehicleHeight" name="vehicleHeight" step="0.1" value="13.6" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue">
+            </div>
+            
+            <div>
+              <label for="vehicleWeight" class="block text-sm font-medium text-gray-700 mb-1">Weight (lbs)</label>
+              <input type="number" id="vehicleWeight" name="vehicleWeight" step="1000" value="80000" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue">
+            </div>
+            
+            <div>
+              <label for="vehicleLength" class="block text-sm font-medium text-gray-700 mb-1">Length (feet)</label>
+              <input type="number" id="vehicleLength" name="vehicleLength" step="0.1" value="75" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue">
+            </div>
+          </div>
+          
+          <!-- Capacity Gauge -->
+          <div class="mb-1 flex justify-between items-center">
+            <h4 class="text-sm font-medium text-gray-700">Car Carrier Capacity</h4>
+            <span id="capacityText" class="text-sm font-semibold">0/9 vehicles</span>
+          </div>
+          <div class="capacity-gauge mb-1">
+            <div id="capacityGaugeFill" class="capacity-gauge-fill" style="width: 0%;"></div>
+          </div>
+          <div class="flex justify-end">
+            <button type="button" id="openLoadSimulatorBtn" class="text-sm text-brand-blue-dark hover:text-brand-blue-light font-medium">
+              Open Load Simulator
+            </button>
+          </div>
         </div>
-    </footer>
 
-    <script src="northstar.js"></script>
+        <!-- Vehicle Orders Section -->
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-medium text-gray-800">Vehicle Orders</h3>
+              <div class="flex space-x-3">
+                <select id="routePreference" class="text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:ring-brand-blue focus:border-brand-blue">
+                  <option value="efficient">Most Efficient</option>
+                  <option value="pickupFirst">Pickups First</option>
+                  <option value="deliveryFirst">Deliveries First</option>
+                  <option value="custom">Custom Order</option>
+                </select>
+                <button type="button" id="optimizeRouteBtn" class="bg-brand-blue text-white px-4 py-1.5 rounded-md shadow-sm northstar-btn text-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  Optimize Route
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div id="vehicleOrdersContainer" class="p-4 divide-y divide-gray-200">
+            <!-- Vehicle orders will be dynamically added here -->
+            <div class="py-6 text-center text-gray-500">
+              No vehicle orders added yet. Click "Add Vehicle Order" to get started.
+            </div>
+          </div>
+          
+          <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            <button type="button" id="addVehicleOrderBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md shadow-sm northstar-btn flex items-center mx-auto">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Add Vehicle Order
+            </button>
+          </div>
+        </div>
+
+        <!-- Map Section -->
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-800">Route Preview</h3>
+          </div>
+          
+          <div class="p-4">
+            <div id="map" class="rounded-lg shadow-sm mb-4"></div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div class="bg-brand-slate-light p-4 rounded-lg">
+                <h4 class="text-sm font-medium text-gray-700 mb-2">Route Summary</h4>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span class="text-gray-600">Total Stops:</span>
+                    <span id="totalStops" class="font-medium ml-1">0</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">Distance:</span>
+                    <span id="totalDistance" class="font-medium ml-1">0 miles</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">Estimated Time:</span>
+                    <span id="totalDuration" class="font-medium ml-1">0 min</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">Toll Costs:</span>
+                    <span id="tollInfo" class="font-medium ml-1">$0.00</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="bg-brand-slate-light p-4 rounded-lg">
+                <div class="flex justify-between items-center mb-2">
+                  <h4 class="text-sm font-medium text-gray-700">Hazard Information</h4>
+                  <span class="inline-block px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">None Detected</span>
+                </div>
+                <p class="text-sm text-gray-600" id="hazardInfo">
+                  No hazards detected on current route. Bridge clearances, weight restrictions, and road conditions all appear suitable for your vehicle configuration.
+                </p>
+              </div>
+            </div>
+            
+            <!-- Route Timeline -->
+            <h4 class="text-sm font-medium text-gray-700 mb-3">Route Timeline</h4>
+            <div class="relative pb-4" id="routeTimeline">
+              <div class="timeline-line"></div>
+              <div class="text-center text-gray-500 text-sm py-3">
+                Add vehicle orders to generate route timeline
+              </div>
+              <!-- Timeline items will be added here dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Routing Preferences -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+              <h3 class="text-lg font-medium text-gray-800">Routing Preferences</h3>
+            </div>
+            
+            <div class="p-6 space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-3">
+                  <div class="flex items-center">
+                    <input type="checkbox" id="avoidLowBridges" name="avoidLowBridges" class="h-4 w-4 text-brand-blue focus:ring-brand-blue" checked>
+                    <label for="avoidLowBridges" class="ml-2 text-sm text-gray-700">Avoid low clearance bridges</label>
+                  </div>
+                  
+                  <div class="flex items-center">
+                    <input type="checkbox" id="avoidWeightLimits" name="avoidWeightLimits" class="h-4 w-4 text-brand-blue focus:ring-brand-blue" checked>
+                    <label for="avoidWeightLimits" class="ml-2 text-sm text-gray-700">Avoid weight-restricted roads</label>
+                  </div>
+                  
+                  <div class="flex items-center">
+                    <input type="checkbox" id="avoidResidential" name="avoidResidential" class="h-4 w-4 text-brand-blue focus:ring-brand-blue" checked>
+                    <label for="avoidResidential" class="ml-2 text-sm text-gray-700">Avoid residential streets</label>
+                  </div>
+                  
+                  <div class="flex items-center">
+                    <input type="checkbox" id="avoidFerries" name="avoidFerries" class="h-4 w-4 text-brand-blue focus:ring-brand-blue" checked>
+                    <label for="avoidFerries" class="ml-2 text-sm text-gray-700">Avoid ferries and car transport trains</label>
+                  </div>
+                </div>
+                
+                <div class="space-y-3">
+                  <div class="flex items-center">
+                    <input type="checkbox" id="optimizeTolls" name="optimizeTolls" class="h-4 w-4 text-brand-blue focus:ring-brand-blue" checked>
+                    <label for="optimizeTolls" class="ml-2 text-sm text-gray-700">Optimize for lowest toll costs</label>
+                  </div>
+                  
+                  <div class="flex items-center">
+                    <input type="checkbox" id="showWeighStations" name="showWeighStations" class="h-4 w-4 text-brand-blue focus:ring-brand-blue" checked>
+                    <label for="showWeighStations" class="ml-2 text-sm text-gray-700">Show weigh stations on route</label>
+                  </div>
+                  
+                  <div class="flex items-center">
+                    <input type="checkbox" id="showRestAreas" name="showRestAreas" class="h-4 w-4 text-brand-blue focus:ring-brand-blue">
+                    <label for="showRestAreas" class="ml-2 text-sm text-gray-700">Show rest areas and truck stops</label>
+                  </div>
+                  
+                  <div class="flex items-center">
+                    <input type="checkbox" id="avoidHighways" name="avoidHighways" class="h-4 w-4 text-brand-blue focus:ring-brand-blue">
+                    <label for="avoidHighways" class="ml-2 text-sm text-gray-700">Avoid highways when possible</label>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="pt-2">
+                <div class="flex justify-between mb-1">
+                  <label for="fuelEfficiency" class="text-sm font-medium text-gray-700">Fuel Efficiency Optimization</label>
+                  <span class="text-sm text-gray-500">Balanced</span>
+                </div>
+                <input type="range" id="fuelEfficiency" min="1" max="5" value="3" class="w-full h-2 bg-gray-200 rounded appearance-none cursor-pointer">
+                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>Faster Routes</span>
+                  <span>Fuel Efficient</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+              <h3 class="text-lg font-medium text-gray-800">Driver Communication</h3>
+            </div>
+            
+            <div class="p-6 space-y-4">
+              <div>
+                <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes for Driver</label>
+                <textarea id="notes" name="notes" rows="2" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue" 
+                        placeholder="Special instructions, access codes, or other information..."></textarea>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Navigation Links</label>
+                  <div class="flex items-center space-x-3">
+                    <div class="inline-flex">
+                      <input type="checkbox" id="googleMapsLink" name="googleMapsLink" class="h-4 w-4 text-brand-blue focus:ring-brand-blue" checked>
+                      <label for="googleMapsLink" class="ml-2 text-sm text-gray-700">Google Maps</label>
+                    </div>
+                    <div class="inline-flex">
+                      <input type="checkbox" id="appleMapsLink" name="appleMapsLink" class="h-4 w-4 text-brand-blue focus:ring-brand-blue" checked>
+                      <label for="appleMapsLink" class="ml-2 text-sm text-gray-700">Apple Maps</label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">ETA Sharing</label>
+                  <div class="flex items-center space-x-3">
+                    <div class="inline-flex">
+                      <input type="checkbox" id="shareWithCustomer" name="shareWithCustomer" class="h-4 w-4 text-brand-blue focus:ring-brand-blue" checked>
+                      <label for="shareWithCustomer" class="ml-2 text-sm text-gray-700">Share with Customer</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Document Generation</label>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div class="inline-flex">
+                    <input type="checkbox" id="genBillOfLading" name="genBillOfLading" class="h-4 w-4 text-brand-blue focus:ring-brand-blue" checked>
+                    <label for="genBillOfLading" class="ml-2 text-sm text-gray-700">Bill of Lading</label>
+                  </div>
+                  <div class="inline-flex">
+                    <input type="checkbox" id="genTripSheet" name="genTripSheet" class="h-4 w-4 text-brand-blue focus:ring-brand-blue" checked>
+                    <label for="genTripSheet" class="ml-2 text-sm text-gray-700">Trip Sheet</label>
+                  </div>
+                  <div class="inline-flex">
+                    <input type="checkbox" id="genExpenseTracker" name="genExpenseTracker" class="h-4 w-4 text-brand-blue focus:ring-brand-blue">
+                    <label for="genExpenseTracker" class="ml-2 text-sm text-gray-700">Expense Tracker</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="pt-4">
+          <button type="submit" class="w-full bg-brand-blue hover:bg-brand-blue-dark text-white font-medium py-3 px-4 rounded-md shadow-sm northstar-btn flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Create Route
+          </button>
+        </div>
+      </form>
+
+      <!-- Results will show here after form submission -->
+      <div id="routeResults" class="mt-8 hidden">
+        <div class="border-t border-gray-200 pt-6">
+          <h3 class="text-lg font-semibold mb-4">Route Created Successfully</h3>
+          
+          <div class="bg-brand-slate-light p-4 rounded-md mb-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-medium text-gray-700">Share with Driver:</span>
+              <button id="copyLink" class="text-brand-blue hover:text-brand-blue-dark text-sm font-medium">Copy Link</button>
+            </div>
+            <input type="text" id="shareLink" readonly 
+                  class="w-full px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-500">
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- QR Code Container -->
+            <div class="bg-white p-4 rounded-md border border-gray-200 flex items-center justify-center flex-col">
+              <h4 class="text-sm font-medium text-gray-700 mb-2">Scan QR Code:</h4>
+              <div id="routeQRCode" class="w-32 h-32 bg-gray-100 flex items-center justify-center">
+                <!-- QR code will be inserted here -->
+                <span class="text-gray-400 text-sm">Generating QR code...</span>
+              </div>
+            </div>
+            
+            <!-- Route Details Summary -->
+            <div class="bg-white p-4 rounded-md border border-gray-200">
+              <h4 class="text-sm font-medium text-gray-700 mb-2">Route Details:</h4>
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600">Total Distance:</span>
+                  <span id="routeDistance" class="font-medium">-</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600">Estimated Time:</span>
+                  <span id="routeTime" class="font-medium">-</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600">Toll Costs:</span>
+                  <span id="routeTolls" class="font-medium">-</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600">Total Vehicles:</span>
+                  <span id="routeVehicles" class="font-medium">-</span>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-gray-200">
+                <div class="flex space-x-2">
+                  <button id="printRouteBtn" class="bg-brand-blue hover:bg-brand-blue-dark text-white px-3 py-1 rounded text-sm flex-1 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Print
+                  </button>
+                  <button id="downloadRouteBtn" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm flex-1 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Analytics Summary -->
+            <div class="bg-white p-4 rounded-md border border-gray-200">
+              <h4 class="text-sm font-medium text-gray-700 mb-2">Business Analytics:</h4>
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600">Revenue Per Mile:</span>
+                  <span id="revenuePerMile" class="font-medium">$3.45/mile</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600">Deadhead Mileage:</span>
+                  <span id="deadheadMileage" class="font-medium">12%</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600">Est. Fuel Cost:</span>
+                  <span id="fuelCost" class="font-medium">$420.75</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600">Net Profit:</span>
+                  <span id="netProfit" class="font-medium text-green-600">$1,876.50</span>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-gray-200">
+                <button id="viewDetailedAnalytics" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded text-sm flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  View Detailed Analytics
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Document Preview -->
+          <div class="mt-6">
+            <h4 class="text-sm font-medium text-gray-700 mb-3">Generated Documents</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-white p-4 rounded-md border border-gray-200">
+                <div class="flex justify-between items-center mb-2">
+                  <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-brand-blue mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h5 class="font-medium">Bill of Lading</h5>
+                  </div>
+                  <button class="text-sm text-brand-blue hover:text-brand-blue-dark">Preview</button>
+                </div>
+                <p class="text-xs text-gray-600">Legally compliant BOL with vehicle details, pickup/delivery information, and e-signature fields.</p>
+              </div>
+              
+              <div class="bg-white p-4 rounded-md border border-gray-200">
+                <div class="flex justify-between items-center mb-2">
+                  <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-brand-blue mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h5 class="font-medium">Trip Sheet</h5>
+                  </div>
+                  <button class="text-sm text-brand-blue hover:text-brand-blue-dark">Preview</button>
+                </div>
+                <p class="text-xs text-gray-600">Detailed trip plan with stops, directions, DOT inspection reminders, and rest area locations.</p>
+              </div>
+              
+              <div class="bg-white p-4 rounded-md border border-gray-200">
+                <div class="flex justify-between items-center mb-2">
+                  <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-brand-blue mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h5 class="font-medium">Expense Tracker</h5>
+                  </div>
+                  <button class="text-sm text-brand-blue hover:text-brand-blue-dark">Preview</button>
+                </div>
+                <p class="text-xs text-gray-600">Form for tracking fuel, tolls, and other expenses with automatic mileage calculation.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-gray-800 text-white p-6 mt-auto">
+    <div class="container mx-auto">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="mb-4 md:mb-0">
+          <div class="flex items-center">
+            <svg class="h-6 w-6 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
+            </svg>
+            <span class="font-semibold">North Star</span>
+          </div>
+          <p class="text-sm text-gray-400 mt-1">The Car Carrier Navigator's Choice</p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-400">&copy; 2025 NorthStar - Car Carrier Edition. All rights reserved.</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Modals -->
+  <!-- Load Simulator Modal -->
+  <div id="loadSimulatorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
+      <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="text-lg font-medium text-gray-800">Vehicle Load Simulator</h3>
+        <button id="closeLoadSimulator" class="text-gray-400 hover:text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Loading Style</label>
+            <select id="loadingStyle" class="text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:ring-brand-blue focus:border-brand-blue">
+              <option value="standard">Standard (Top & Bottom)</option>
+              <option value="wedge">Wedge (Staggered)</option>
+              <option value="enclosed">Enclosed (Single Level)</option>
+            </select>
+          </div>
+          <div>
+            <span class="block text-sm font-medium text-gray-700 mb-1">Load Status</span>
+            <span class="inline-block px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">6/9 Vehicles Loaded</span>
+          </div>
+        </div>
+        
+        <div class="loading-simulator mb-4 flex items-center justify-center">
+          <div class="text-center text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            <p class="text-sm">Loading diagram will appear here</p>
+          </div>
+        </div>
+        
+        <h4 class="text-sm font-medium text-gray-700 mb-2">Vehicle Load List</h4>
+        <div class="bg-gray-50 rounded-md border border-gray-200 overflow-hidden divide-y divide-gray-200">
+          <div class="px-4 py-3 flex items-center justify-between">
+            <div>
+              <span class="font-medium text-sm">2022 Honda Accord</span>
+              <p class="text-xs text-gray-500">Sedan • 3,200 lbs • Position: Top Deck Front</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button class="text-gray-400 hover:text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7l4-4m0 0l4 4m-4-4v18" />
+                </svg>
+              </button>
+              <button class="text-gray-400 hover:text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 17l-4 4m0 0l-4-4m4 4V3" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <!-- Additional vehicle items would go here -->
+        </div>
+        
+        <div class="mt-4 text-sm text-gray-500">
+          <p>This load configuration is within legal weight and dimension limits. No over-dimensional permits required.</p>
+        </div>
+      </div>
+      <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
+        <button id="saveLoadConfiguration" class="bg-brand-blue text-white px-4 py-2 rounded-md shadow-sm hover:bg-brand-blue-dark">
+          Save Configuration
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Templates -->
+  <!-- Vehicle Order Template -->
+  <template id="vehicleOrderTemplate">
+    <div class="order-card bg-white rounded-lg shadow-sm overflow-hidden mb-4">
+      <div class="px-4 py-3 bg-gray-50 flex justify-between items-center cursor-pointer order-header">
+        <div class="flex items-center">
+          <span class="order-number font-medium mr-2">Order #1</span>
+          <span class="order-summary text-gray-600 text-sm"></span>
+        </div>
+        <div class="flex items-center">
+          <button type="button" class="toggle-order-btn text-gray-400 hover:text-gray-700 mr-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <button type="button" class="remove-order-btn text-gray-400 hover:text-red-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="order-details p-4 border-t border-gray-200">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Pickup Location</label>
+            <div class="relative">
+              <input type="text" class="pickup-location w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue" placeholder="Enter pickup address">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+            </div>
+            <button type="button" class="text-sm text-brand-blue hover:text-brand-blue-dark mt-1">+ Add location notes</button>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Delivery Location</label>
+            <div class="relative">
+              <input type="text" class="delivery-location w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue" placeholder="Enter delivery address">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+            </div>
+            <button type="button" class="text-sm text-brand-blue hover:text-brand-blue-dark mt-1">+ Add location notes</button>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Year/Make/Model</label>
+            <input type="text" class="vehicle-model w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue" placeholder="e.g. 2022 Honda Accord">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">VIN (Optional)</label>
+            <input type="text" class="vehicle-vin w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue" placeholder="Vehicle identification number">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
+            <select class="vehicle-type w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue">
+              <option value="sedan">Sedan</option>
+              <option value="suv">SUV</option>
+              <option value="truck">Truck</option>
+              <option value="van">Van</option>
+              <option value="convertible">Convertible</option>
+              <option value="luxury">Luxury</option>
+              <option value="exotic">Exotic</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Special Instructions</label>
+          <textarea class="vehicle-instructions w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue" rows="2" placeholder="Access codes, contact info, vehicle condition, etc."></textarea>
+        </div>
+        
+        <div class="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div class="flex justify-between">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Appointment Time (Optional)</label>
+              <div class="flex space-x-3">
+                <div class="inline-flex items-center">
+                  <input type="radio" id="pickupTime" name="appointmentType" class="h-4 w-4 text-brand-blue focus:ring-brand-blue">
+                  <label for="pickupTime" class="ml-2 text-xs text-gray-700">Pickup</label>
+                </div>
+                <div class="inline-flex items-center">
+                  <input type="radio" id="deliveryTime" name="appointmentType" class="h-4 w-4 text-brand-blue focus:ring-brand-blue">
+                  <label for="deliveryTime" class="ml-2 text-xs text-gray-700">Delivery</label>
+                </div>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <input type="date" class="appointment-date w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue text-sm">
+              <input type="time" class="appointment-time w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue text-sm">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Customer Contact</label>
+            <div class="grid grid-cols-2 gap-2">
+              <input type="text" class="customer-name w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue text-sm" placeholder="Customer Name">
+              <input type="tel" class="customer-phone w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue text-sm" placeholder="Phone Number">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+  
+  <!-- Route Stop Template -->
+  <template id="routeStopTemplate">
+    <div class="timeline-item flex items-start pb-6">
+      <div class="flex-none relative">
+        <span class="stop-badge pickup-badge flex items-center justify-center">P</span>
+      </div>
+      <div class="ml-4 flex-grow">
+        <div class="flex justify-between">
+          <div>
+            <p class="font-medium stop-address text-gray-800">123 Main St, Chicago, IL</p>
+            <p class="text-sm text-gray-500 stop-details">Pickup: 2022 Honda Accord</p>
+          </div>
+          <div class="flex items-center">
+            <span class="text-sm text-gray-500 stop-sequence mr-2">Stop #1</span>
+            <div class="flex space-x-1">
+              <button type="button" class="move-up-btn p-1 text-gray-400 hover:text-gray-700 rounded">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+              <button type="button" class="move-down-btn p-1 text-gray-400 hover:text-gray-700 rounded">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="mt-1 flex items-center">
+          <span class="text-xs font-medium px-2 py-0.5 bg-gray-100 text-gray-800 rounded">ETA: 10:30 AM</span>
+          <span class="mx-2 text-gray-300">|</span>
+          <div class="flex space-x-2">
+            <a href="#" class="text-xs text-brand-blue hover:text-brand-blue-dark">Google Maps</a>
+            <a href="#" class="text-xs text-brand-blue hover:text-brand-blue-dark">Apple Maps</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  
+  <!-- NorthStar App JS -->
+  <script src="northstar.js"></script>
 </body>
 </html>
